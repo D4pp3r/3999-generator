@@ -277,6 +277,8 @@ namespace _3999_gen
                 cmboBoxSection.Items.Add(section);
                 cmboBoxSection2.Items.Add(section);
             }
+            cmboBoxSection.SelectedIndex = 0;
+            cmboBoxSection2.SelectedIndex = 0;
         }
 
         private void InitChartData(int state, int startLine, int endLine, string[] lines)
