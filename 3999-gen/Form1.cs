@@ -36,43 +36,13 @@ namespace _3999_gen
         private void BtnGenerate_Click(object sender, EventArgs e)
         {
             List<string> chartOutput = new List<string>();
-            int numNotes = 3999;
-
-            if (rdoBtn3999.Checked)
-            {
-                numNotes = 3999;
-            }
-
-            else if (rdoBtnCustom.Checked)
-            {
-                numNotes = int.Parse(txtBoxNoteCount.Text);
-            }
+            int numNotes = rdoBtn3999.Checked ? 3999 : (rdoBtnCustom.Checked ? int.Parse(txtBoxNoteCount.Text) : -1);
 
             if (rdoBtnSection.Checked)
             {
                 int[] timestamps = sectionGrabber(sections, cmboBoxSection.Text, cmboBoxSection2.Text);
                 List<string> section = new List<string>();
-                bool sectionCheck = false;
-    
-                foreach(string line in expertChart)
-                {
-                    string[] subs = line.Trim().Split('=');
-    
-                    if(int.Parse(subs[0].Trim()) == timestamps[0])
-                    {
-                        sectionCheck = true;
-                    }
-    
-                    else if(int.Parse(subs[0].Trim()) == timestamps[1])
-                    {
-                        sectionCheck = false;
-                    }
-    
-                    if(sectionCheck)
-                    {
-                        section.Append(line);
-                    }
-                }
+                ParseNotes(timestamps, section);
 
                 if (rdoBtnIteration.Checked)
                 {
@@ -92,9 +62,47 @@ namespace _3999_gen
                 }
 
                 chartOutput = chartMultiply(expertChart, numNotes);
+
             }
 
 
+        }
+
+        private bool ParseNotes(int[] timestamps, List<string> section)
+        {
+            bool sectionCheck = false;
+            foreach (string line in expertChart)
+            {
+                string[] subs = line.Trim().Split('=');
+                int timeStamp = int.Parse(subs[0].Trim());
+
+                switch (timeStamp)
+                {
+                    case var curTime when curTime == timestamps[0]:
+                        sectionCheck = true;
+                        break;
+                    case var curTime when curTime == timestamps[1]:
+                        sectionCheck = false;
+                        break;
+                }
+
+                /*if (timeStamp == timestamps[0])
+                {
+                    sectionCheck = true;
+                }
+
+                else if(timeStamp == timestamps[1])
+                {
+                    sectionCheck = false;
+                }*/
+
+                if (sectionCheck)
+                {
+                    section.Append(line);
+                }
+            }
+
+            return sectionCheck;
         }
 
         // reads in the chart data and separates it out appropriately
@@ -120,25 +128,31 @@ namespace _3999_gen
             catch (Exception e)
             {
                 // oopsie poopsie there was a fucky wucky
-                MessageBox.Show(e.Message);
+                if(MessageBox.Show(e.Message + "\n\n" + e.ToString(), "CHART PARSING ERROR") == DialogResult.OK)
+                {
+                    Application.Exit();
+                }
+
             }
         }
 
         private void ParseChart(string[] lines)
         {
-            // looks for specific lines in the .chart file and set the sorting state accordingly
-            for (int i = 0; i < lines.Length; i++)
-            {
-                HandleLines(lines, i);
-            }
-        }
-
-        private void HandleLines(string[] lines, int i)
-        {
             // variable declaration
             int state = -1;
             int startLine = 0;
+            int endLine = 0;
 
+            // looks for specific lines in the .chart file and set the sorting state accordingly
+            for (int i = 0; i < lines.Length; i++)
+            {
+                HandleLines(lines, ref state, ref startLine, ref endLine, i);
+            }
+        }
+
+        private void HandleLines(string[] lines, ref int state, ref int startLine, ref int endLine, int i)
+        {
+            
             switch (lines[i])
             {
                 case "[Song]":
@@ -248,30 +262,33 @@ namespace _3999_gen
         private Dictionary<int, string> getSections(List<string> data)
         {
             Dictionary<int, string> output = new Dictionary<int, string>();
-
-
             for(int i = 0; i<data.Count; i++)
             {
-                string sectionTemp = "";
                 string[] subs = data[i].Trim().Split(' ');
+                AddSections(output, subs);
+            }
+            return output;
+        }
 
-                if (subs[3].Contains("section"))
-                {
-                    for(int x = 0; x<subs.Length; x++)
-                    {
-                        if(x > 3)
-                        {
-                            sectionTemp += subs[x];
-                        }
-                    }
+        private static void AddSections(Dictionary<int, string> output, string[] subs)
+        {
+            string sectionTemp = "";
+            if (subs[3].Contains("section"))
+            {
+                sectionTemp = concatSectionTemp(subs, sectionTemp);
+                sectionTemp = sectionTemp.Split('\"')[0];
+                output.Add(int.Parse(subs[0]), sectionTemp);
+            }
+        }
 
-                    sectionTemp = sectionTemp.Split('\"')[0];
-
-                    output.Add(int.Parse(subs[0]), sectionTemp);
-                }
+        private static string concatSectionTemp(string[] subs, string sectionTemp)
+        {
+            for (int x = 4; x < subs.Length; x++)
+            {
+                sectionTemp  = sectionTemp + subs[x]+" ";
             }
 
-            return output;
+            return sectionTemp;
         }
 
         // writes .chart as string, outputs string to new notes.chart, named 3999notes.chart
@@ -360,34 +377,34 @@ namespace _3999_gen
         {
             int startTick = 0;
             int endTick = 0;
-            bool endCheck = false;
-            Dictionary<int, string> orderedSections = (Dictionary<int, string>) sections.OrderBy(key => key.Key);
 
-            foreach(KeyValuePair<int, string> section in orderedSections)
-            {
-                if(endCheck)
-                {
-                    endTick = section.Key-1;
-                }
+            Dictionary<int, string> orderedSections = (Dictionary<int, string>)sections.OrderBy(key => key.Key);
 
-                if(section.Value == startSection)
-                {
-                    startTick = section.Key;
-                }
+            SetStartEndTicks(startSection, endSection, ref startTick, ref endTick, orderedSections);
 
-                if(section.Value == endSection)
-                {
-                    endCheck = true;
-                }
-            }
-
-            if(endTick-startTick<=1)
+            if (endTick - startTick <= 1)
             {
                 MessageBox.Show("naughty ch players go to the pokey");
                 Application.Exit();
             }
 
             return new int[] { startTick, endTick };
+        }
+
+        private static void SetStartEndTicks(string startSection, string endSection, ref int startTick, ref int endTick, Dictionary<int, string> orderedSections)
+        {
+            foreach (KeyValuePair<int, string> section in orderedSections)
+            {
+                switch(section.Value)
+                {
+                    case var val when val == startSection:
+                        startTick = section.Key;
+                        continue;
+                    case var val when val == endSection:
+                        endTick = section.Key;
+                        continue;
+                }
+            }
         }
 
         private List<string> chartMultiply(List<string> chartData, int numNotes)
