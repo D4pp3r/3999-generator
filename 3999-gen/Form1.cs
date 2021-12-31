@@ -272,10 +272,13 @@ namespace _3999_gen
         private void InitComboBoxes()
         {
             // add sections to the drop-down
+            int i = 1;
             foreach (string section in sections.Values)
             {
-                cmboBoxSection.Items.Add(section);
-                cmboBoxSection2.Items.Add(section);
+                string curSection = i.ToString() + ": " + section;
+                cmboBoxSection.Items.Add(curSection);
+                cmboBoxSection2.Items.Add(curSection);
+                i++;
             }
             cmboBoxSection.SelectedIndex = 0;
             cmboBoxSection2.SelectedIndex = 0;
