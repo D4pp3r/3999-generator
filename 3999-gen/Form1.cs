@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
+using NAudio;
 
 namespace _3999_gen
 {
@@ -82,7 +83,7 @@ namespace _3999_gen
 
         }
 
-        private bool ParseNotes(int[] timestamps, List<string> section)
+        private void ParseNotes(int[] timestamps, List<string> section)
         {
             bool sectionCheck = false;
             foreach (string line in expertChart)
@@ -94,10 +95,10 @@ namespace _3999_gen
                 {
                     case var curTime when curTime == timestamps[0]:
                         sectionCheck = true;
-                        break;
+                        continue;
                     case var curTime when curTime == timestamps[1]:
                         sectionCheck = false;
-                        break;
+                        continue;
                 }
 
                 /*if (timeStamp == timestamps[0])
@@ -116,7 +117,6 @@ namespace _3999_gen
                 }
             }
 
-            return sectionCheck;
         }
 
         // reads in the chart data and separates it out appropriately
@@ -397,14 +397,24 @@ namespace _3999_gen
             int startTick = 0;
             int endTick = 0;
 
-            Dictionary<int, string> orderedSections = (Dictionary<int, string>)sections.OrderBy(key => key.Key);
+            Dictionary<int, string> orderedSections = null; 
+            try
+            {
+                orderedSections = sections.OrderBy(key => key.Key).ToDictionary(key => key.Key, key => key.Value);
+            }
+            catch(Exception e)
+            {
+                ErrorMessageAndClose(e, "CASTING ERROR");
+            }
 
             SetStartEndTicks(startSection, endSection, ref startTick, ref endTick, orderedSections);
 
             if (endTick - startTick <= 0)
             {
-                MessageBox.Show("naughty ch players go to the pokey");
-                Application.Exit();
+                if(MessageBox.Show("naughty ch players go to the pokey") == DialogResult.OK)
+                {
+                    Application.Exit();
+                }
             }
 
             return new int[] { startTick, endTick };
