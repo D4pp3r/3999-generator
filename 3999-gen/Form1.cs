@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using NAudio;
+using System.Text.RegularExpressions;
 
 namespace _3999_gen
 {
@@ -153,6 +154,11 @@ namespace _3999_gen
 
         }
 
+        private static string StripHTML(string input)
+        {
+            return Regex.Replace(input, "<.*?>", String.Empty);
+        }
+
         // reads in the chart data and separates it out appropriately
         private void readChart(string filename)
         {
@@ -160,7 +166,7 @@ namespace _3999_gen
             {
                 // grabs all lines from file
                 string[] lines = File.ReadAllLines(filename);
-
+                
                 ParseChart(lines);
 
                 chartDic = ChartListToDictionary(expertChart);
@@ -171,11 +177,30 @@ namespace _3999_gen
 
                 InitComboBoxes();
 
+
+                string[] songini = File.ReadAllLines(filename.Split(new[] { "notes.chart" }, StringSplitOptions.None)[0] + "song.ini");
+                string songName = null, songArtist = null, songCharter = null;
+                bool hasSongName, hasSongArtist, hasSongCharter;
+                foreach(string entry in songini)
+                {
+                    string newEntry = StripHTML(entry);
+                    hasSongName = newEntry.Trim().ToLower().StartsWith("name");
+                    if (hasSongName) songName = newEntry.Trim().Split('=')[1].Trim();
+                    hasSongArtist = newEntry.Trim().ToLower().StartsWith("artist");
+                    if (hasSongArtist) songArtist = newEntry.Trim().Split('=')[1].Trim();
+                    hasSongCharter = newEntry.Trim().ToLower().StartsWith("charter");
+                    if (hasSongCharter) songCharter = newEntry.Trim().Split('=')[1].Trim();
+                }
+
+                if (songName is null) songName = "Unknown Name";
+                if (songArtist is null) songArtist = "Unknown Artist";
+                if (songCharter is null) songCharter = "Unknown Charter";
                 // sets name label to song title
+                /*
                 string songName = !songData.ContainsKey("Name") ? "Unknown Name" : songData["Name"];
                 string songArtist = !songData.ContainsKey("Artist") ? "Unknown Artist" : songData["Artist"];
-                string songCharter = !songData.ContainsKey("Charter") ? "Unknown Charter" : songData["Charter"];
-                lblSong.Text = songName.Replace("\"", "") + " by " + songArtist.Replace("\"", "") + " (Charted by: " + songCharter.Replace("\"", "") + ")";
+                string songCharter = !songData.ContainsKey("Charter") ? "Unknown Charter" : songData["Charter"];*/
+                lblSong.Text = songName + " by " + songArtist + " (Charted by: " + songCharter + ")";
 
             }
 
@@ -183,7 +208,6 @@ namespace _3999_gen
             {
                 // oopsie poopsie there was a fucky wucky
                 ErrorMessageAndClose(e, "CHART PARSING ERROR");
-
             }
         }
 
@@ -280,10 +304,10 @@ namespace _3999_gen
             float maxWidth = 0f;
             Font font = cmboBoxSection.Font;
             SizeF stringSize = new SizeF();
-            
-            foreach (string section in sections.Values)
+            List<string> sectionLists = new List<string>(sections.Values);
+            foreach (string section in sectionLists)
             {
-                string curSection = i.ToString() + ": " + section;
+                string curSection = StripHTML(i.ToString() + ": " + section);
                 stringSize = e.Graphics.MeasureString(curSection, font);
                 if(stringSize.Width > maxWidth)
                 {
@@ -296,6 +320,7 @@ namespace _3999_gen
                 cmboBoxSection2.Items.Add(curSection);
                 i++;
             }
+            //System.GC.Collect(); // YO I FOUND WHERE THE MEMORY WAS LEAKING
             cmboBoxSection.SelectedIndex = 0;
             cmboBoxSection2.SelectedIndex = 0;
         }
@@ -545,6 +570,7 @@ namespace _3999_gen
 
         private void InitFields()
         {
+            //
             filePath = null;
 
             sections = new Dictionary<int, string>();
