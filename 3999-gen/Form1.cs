@@ -343,6 +343,7 @@ namespace _3999_gen
             for (int i = 0; i < data.Count; i++)
             {
                 string[] subs = data[i].Trim().Split(' ');
+               
                 AddSections(output, subs);
             }
             return output;
@@ -355,17 +356,28 @@ namespace _3999_gen
             {
                 sectionTemp = concatSectionTemp(subs, sectionTemp);
                 sectionTemp = sectionTemp.Split('\"')[0];
+                
                 output.Add(int.Parse(subs[0]), sectionTemp);
             }
         }
 
         private static string concatSectionTemp(string[] subs, string sectionTemp)
         {
+            if(subs.Length == 5)
+            {
+                string[] tempAr = subs[4].Split('_');
+                string[] newSubs = new string[4 + tempAr.Length];
+                for(int i = 0; i < 4; i++)
+                {
+                    newSubs[i] = subs[i];
+                }
+                tempAr.CopyTo(newSubs, 4);
+                subs = newSubs;
+            }
             for (int x = 4; x < subs.Length; x++)
             {
                 sectionTemp = sectionTemp + subs[x] + " ";
             }
-            sectionTemp.Replace('_', ' ');
             return sectionTemp;
         }
 
