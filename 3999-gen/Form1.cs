@@ -100,131 +100,19 @@ namespace _3999_gen
         // reads in the chart data and separates it out appropriately
         private void readChart(string filename)
         {
-
-            // variable declaration
-            int state = -1;
-
-            int startLine = 0;
-            int endLine = 0;
-
             try
             {
                 // grabs all lines from file
                 string[] lines = File.ReadAllLines(filename);
 
-                // looks for specific lines in the .chart file and set the sorting state accordingly
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    switch (lines[i])
-                    {
-                        case "[Song]":
-                            state = 0;
-                            continue;
-
-                        case "[SyncTrack]":
-                            state = 1;
-                            continue;
-
-                        case "[Events]":
-                            state = 2;
-                            continue;
-
-                        case "[ExpertSingle]":
-                            state = 3;
-                            continue;
-
-                        case "[HardSingle]":
-                            state = 4;
-                            continue;
-
-                        case "[MediumSingle]":
-                            state = 5;
-                            continue;
-
-                        case "[EasySingle]":
-                            state = 6;
-                            continue;
-                    }
-
-                    // looks for the start of a section of raw data
-                    if (lines[i] == "{")
-                    {
-                        startLine = i + 1;
-                    }
-
-                    //looks for the send of a section of raw data, then processes according to the sorting state
-                    else if (lines[i] == "}")
-                    {
-                        endLine = i - 1;
-
-                        switch (state)
-                        {
-                            case -1:
-                                continue;
-
-                            case 0:
-                                for (int x = 0; x <= endLine - startLine; x++)
-                                {
-                                    metaData.Add(lines[startLine + x]);
-                                }
-                                continue;
-
-                            case 1:
-                                for (int x = 0; x <= endLine - startLine; x++)
-                                {
-                                    tempoData.Add(lines[startLine + x]);
-                                }
-                                continue;
-
-                            case 2:
-                                for (int x = 0; x <= endLine - startLine; x++)
-                                {
-                                    eventsData.Add(lines[startLine + x]);
-                                }
-                                continue;
-
-                            case 3:
-                                for (int x = 0; x <= endLine - startLine; x++)
-                                {
-                                    expertChart.Add(lines[startLine + x]);
-                                }
-                                continue;
-
-                            case 4:
-                                for (int x = 0; x <= endLine - startLine; x++)
-                                {
-                                    hardChart.Add(lines[startLine + x]);
-                                }
-                                continue;
-
-                            case 5:
-                                for (int x = 0; x <= endLine - startLine; x++)
-                                {
-                                    mediumChart.Add(lines[startLine + x]);
-                                }
-                                continue;
-
-                            case 6:
-                                for (int x = 0; x <= endLine - startLine; x++)
-                                {
-                                    easyChart.Add(lines[startLine + x]);
-                                }
-                                continue;
-                        }
-                    }
-                }
+                ParseChart(lines);
 
                 // clean up raw data
                 sections = getSections(eventsData);
                 songData = getMetaData(metaData);
-                
-                // add sections to the drop-down
-                foreach(string section in sections.Values)
-                {
-                    cmboBoxSection.Items.Add(section);
-                    cmboBoxSection2.Items.Add(section);
-                }
-                
+
+                InitComboBoxes();
+
                 // sets name label to song title
                 lblSong.Text = songData["Name"];
             }
@@ -233,6 +121,127 @@ namespace _3999_gen
             {
                 // oopsie poopsie there was a fucky wucky
                 MessageBox.Show(e.Message);
+            }
+        }
+
+        private void ParseChart(string[] lines)
+        {
+            // looks for specific lines in the .chart file and set the sorting state accordingly
+            for (int i = 0; i < lines.Length; i++)
+            {
+                HandleLines(lines, i);
+            }
+        }
+
+        private void HandleLines(string[] lines, int i)
+        {
+            // variable declaration
+            int state = -1;
+            int startLine = 0;
+
+            switch (lines[i])
+            {
+                case "[Song]":
+                    state = 0;
+                    return;
+
+                case "[SyncTrack]":
+                    state = 1;
+                    return;
+
+                case "[Events]":
+                    state = 2;
+                    return;
+
+                case "[ExpertSingle]":
+                    state = 3;
+                    return;
+
+                case "[HardSingle]":
+                    state = 4;
+                    return;
+
+                case "[MediumSingle]":
+                    state = 5;
+                    return;
+
+                case "[EasySingle]":
+                    state = 6;
+                    return;
+                case "{":
+                    startLine = i + 1;
+                    return;
+                case "}":
+                    InitChartData(state, startLine, i-1, lines);
+                    return;
+            }
+        }
+
+        private void InitComboBoxes()
+        {
+            // add sections to the drop-down
+            foreach (string section in sections.Values)
+            {
+                cmboBoxSection.Items.Add(section);
+                cmboBoxSection2.Items.Add(section);
+            }
+        }
+
+        private void InitChartData(int state, int startLine, int endLine, string[] lines)
+        {
+            switch (state)
+            {
+                case -1:
+                    return;
+
+                case 0:
+                    for (int x = 0; x <= endLine - startLine; x++)
+                    {
+                        metaData.Add(lines[startLine + x]);
+                    }
+                    return;
+
+                case 1:
+                    for (int x = 0; x <= endLine - startLine; x++)
+                    {
+                        tempoData.Add(lines[startLine + x]);
+                    }
+                    return;
+
+                case 2:
+                    for (int x = 0; x <= endLine - startLine; x++)
+                    {
+                        eventsData.Add(lines[startLine + x]);
+                    }
+                    return;
+
+                case 3:
+                    for (int x = 0; x <= endLine - startLine; x++)
+                    {
+                        expertChart.Add(lines[startLine + x]);
+                    }
+                    return;
+
+                case 4:
+                    for (int x = 0; x <= endLine - startLine; x++)
+                    {
+                        hardChart.Add(lines[startLine + x]);
+                    }
+                    return;
+
+                case 5:
+                    for (int x = 0; x <= endLine - startLine; x++)
+                    {
+                        mediumChart.Add(lines[startLine + x]);
+                    }
+                    return;
+
+                case 6:
+                    for (int x = 0; x <= endLine - startLine; x++)
+                    {
+                        easyChart.Add(lines[startLine + x]);
+                    }
+                    return;
             }
         }
 
