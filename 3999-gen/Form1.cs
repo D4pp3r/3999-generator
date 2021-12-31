@@ -271,11 +271,27 @@ namespace _3999_gen
 
         private void InitComboBoxes()
         {
+            Graphics g = this.CreateGraphics();
+            Rectangle rectangle = new Rectangle();
+            PaintEventArgs e = new PaintEventArgs(g, rectangle);
+
             // add sections to the drop-down
             int i = 1;
+            float maxWidth = 0f;
+            Font font = cmboBoxSection.Font;
+            SizeF stringSize = new SizeF();
+            
             foreach (string section in sections.Values)
             {
                 string curSection = i.ToString() + ": " + section;
+                stringSize = e.Graphics.MeasureString(curSection, font);
+                if(stringSize.Width > maxWidth)
+                {
+                    float newWidth = stringSize.Width + 10;
+                    cmboBoxSection.DropDownWidth = Convert.ToInt32(newWidth);
+                    cmboBoxSection2.DropDownWidth = Convert.ToInt32(newWidth);
+                    maxWidth = stringSize.Width;
+                }
                 cmboBoxSection.Items.Add(curSection);
                 cmboBoxSection2.Items.Add(curSection);
                 i++;
@@ -561,6 +577,8 @@ namespace _3999_gen
                 cmboBoxSection2.Items.Clear();
                 readChart(filePath);
             }
+
+            
 
         }
 
