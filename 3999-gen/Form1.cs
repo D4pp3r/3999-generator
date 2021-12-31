@@ -35,7 +35,66 @@ namespace _3999_gen
         // runs the chart generator function
         private void BtnGenerate_Click(object sender, EventArgs e)
         {
-            int[] timestamps = sectionGrabber(sections, cmboBoxSection.Text, cmboBoxSection2.Text);
+            List<string> chartOutput = new List<string>();
+            int numNotes = 3999;
+
+            if (rdoBtn3999.Checked)
+            {
+                numNotes = 3999;
+            }
+
+            else if (rdoBtnCustom.Checked)
+            {
+                numNotes = int.Parse(txtBoxNoteCount.Text);
+            }
+
+            if (rdoBtnSection.Checked)
+            {
+                int[] timestamps = sectionGrabber(sections, cmboBoxSection.Text, cmboBoxSection2.Text);
+                List<string> section = new List<string>();
+                bool sectionCheck = false;
+    
+                foreach(string line in expertChart)
+                {
+                    string[] subs = line.Trim().Split('=');
+    
+                    if(int.Parse(subs[0].Trim()) == timestamps[0])
+                    {
+                        sectionCheck = true;
+                    }
+    
+                    else if(int.Parse(subs[0].Trim()) == timestamps[1])
+                    {
+                        sectionCheck = false;
+                    }
+    
+                    if(sectionCheck)
+                    {
+                        section.Append(line);
+                    }
+                }
+
+                if (rdoBtnIteration.Checked)
+                {
+                    numNotes = int.Parse(txtBoxLoopCount.Text) * noteCount(section);
+                }
+
+                chartOutput = chartMultiply(section, numNotes);
+
+                //writeChart();
+            }
+
+            else if(rdoBtnSong.Checked)
+            {
+                if (rdoBtnIteration.Checked)
+                {
+                    numNotes = int.Parse(txtBoxLoopCount.Text) * noteCount(expertChart);
+                }
+
+                chartOutput = chartMultiply(expertChart, numNotes);
+            }
+
+
         }
 
         // reads in the chart data and separates it out appropriately
@@ -322,9 +381,9 @@ namespace _3999_gen
             return new int[] { startTick, endTick };
         }
 
-        private void chartMultiply(List<string> chartData, int numNotes)
+        private List<string> chartMultiply(List<string> chartData, int numNotes)
         {
-
+            return null;
         }
 
         // on file select, assign the path to filePath
