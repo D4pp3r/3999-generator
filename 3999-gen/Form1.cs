@@ -46,7 +46,14 @@ namespace _3999_gen
 
                 if (rdoBtnIteration.Checked)
                 {
-                    numNotes = int.Parse(txtBoxLoopCount.Text) * noteCount(section);
+                    try
+                    {
+                        numNotes = int.Parse(txtBoxLoopCount.Text) * noteCount(section);
+                    }
+                    catch(Exception e1)
+                    {
+                        ErrorMessageAndClose(e1, "BAD NOTE COUNT DETECTED");
+                    }
                 }
 
                 chartOutput = chartMultiply(section, numNotes);
@@ -58,7 +65,14 @@ namespace _3999_gen
             {
                 if (rdoBtnIteration.Checked)
                 {
-                    numNotes = int.Parse(txtBoxLoopCount.Text) * noteCount(expertChart);
+                    try
+                    {
+                        numNotes = int.Parse(txtBoxLoopCount.Text) * noteCount(expertChart);
+                    }
+                    catch (Exception e2)
+                    {
+                        ErrorMessageAndClose(e2, "BAD ITERATION COUNT DETECTED");
+                    }
                 }
 
                 chartOutput = chartMultiply(expertChart, numNotes);
@@ -122,17 +136,22 @@ namespace _3999_gen
                 InitComboBoxes();
 
                 // sets name label to song title
-                lblSong.Text = songData["Name"];
+                lblSong.Text = songData["Name"].Replace("\"", "") + " by " + songData["Artist"].Replace("\"", "") + " (Charted by: " + songData["Charter"].Replace("\"", "") + ")";
             }
 
             catch (Exception e)
             {
                 // oopsie poopsie there was a fucky wucky
-                if(MessageBox.Show(e.Message + "\n\n" + e.ToString(), "CHART PARSING ERROR") == DialogResult.OK)
-                {
-                    Application.Exit();
-                }
+                ErrorMessageAndClose(e, "CHART PARSING ERROR");
 
+            }
+        }
+
+        private static void ErrorMessageAndClose(Exception e, string errorStr)
+        {
+            if (MessageBox.Show(e.Message + "\n\n" + e.ToString(), errorStr) == DialogResult.OK)
+            {
+                Application.Exit();
             }
         }
 
@@ -382,7 +401,7 @@ namespace _3999_gen
 
             SetStartEndTicks(startSection, endSection, ref startTick, ref endTick, orderedSections);
 
-            if (endTick - startTick <= 1)
+            if (endTick - startTick <= 0)
             {
                 MessageBox.Show("naughty ch players go to the pokey");
                 Application.Exit();
@@ -423,12 +442,14 @@ namespace _3999_gen
         {
             fileDialog.RestoreDirectory = true;
             fileDialog.Filter = "CHART files (*.chart)|*.chart|All files (*.*)|*.*";
-            fileDialog.ShowDialog();
-
-            cmboBoxSection.Items.Clear();
-            cmboBoxSection2.Items.Clear();
-
-            readChart(filePath);
+            DialogResult res = fileDialog.ShowDialog();
+            if(res == DialogResult.OK)
+            {
+                cmboBoxSection.Items.Clear();
+                cmboBoxSection2.Items.Clear();
+                readChart(filePath);
+            }
+            
         }
     }
 }
