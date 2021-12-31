@@ -12,6 +12,8 @@ using NAudio;
 
 namespace _3999_gen
 {
+
+    
     public partial class Form1 : Form
     {
 
@@ -32,7 +34,33 @@ namespace _3999_gen
         {
             InitializeComponent();
         }
-
+        private static Dictionary<int, Note> ChartListToDictionary(List<string> chartData)
+        {
+            Dictionary<int, Note> output = new Dictionary<int, Note>();
+            foreach(string line in chartData)
+            {
+                Note tempNote;
+                string[] lineAr = line.Split('=');
+                int timestamp = int.Parse(lineAr[0].Trim());
+                string[] noteVals = lineAr[1].Trim().Split(' ');
+                if(!output.ContainsKey(timestamp) && noteVals[0] == "N")
+                {
+                    int noteVal = int.Parse(noteVals[1]);
+                    int susLen = int.Parse(noteVals[2]);
+                    tempNote = new Note(noteVal, susLen);
+                    output.Add(timestamp, tempNote);
+                }
+                else if(noteVals[0] == "N")
+                {
+                    int noteVal = int.Parse(noteVals[1]);
+                    Note curNote = output[timestamp];
+                    curNote.addVal(noteVal);
+                    output[timestamp] = curNote;
+                }
+                
+            }
+            return output;
+        }
         // runs the chart generator function
         private void BtnGenerate_Click(object sender, EventArgs e)
         {
@@ -61,6 +89,8 @@ namespace _3999_gen
 
                 //writeChart();
             }
+
+            
 
             else if(rdoBtnSong.Checked)
             {
@@ -129,6 +159,8 @@ namespace _3999_gen
 
                 ParseChart(lines);
 
+                Dictionary<int, Note> chartDic = ChartListToDictionary(expertChart);
+
                 // clean up raw data
                 sections = getSections(eventsData);
                 songData = getMetaData(metaData);
@@ -137,6 +169,7 @@ namespace _3999_gen
 
                 // sets name label to song title
                 lblSong.Text = songData["Name"].Replace("\"", "") + " by " + songData["Artist"].Replace("\"", "") + " (Charted by: " + songData["Charter"].Replace("\"", "") + ")";
+                
             }
 
             catch (Exception e)
@@ -306,7 +339,7 @@ namespace _3999_gen
             {
                 sectionTemp  = sectionTemp + subs[x]+" ";
             }
-
+            sectionTemp.Replace('_', ' ');
             return sectionTemp;
         }
 
@@ -438,7 +471,10 @@ namespace _3999_gen
 
         private List<string> chartMultiply(List<string> chartData, int numNotes)
         {
-            return null;
+            List<string> output = new List<string>();
+            int curNumNotes = noteCount(chartData);
+
+            return output;
         }
 
         // on file select, assign the path to filePath
@@ -460,6 +496,73 @@ namespace _3999_gen
                 readChart(filePath);
             }
             
+        }
+    }
+    public class Note
+    {
+        private int noteVal;
+        private int susVal;
+        private int numNotes;
+        private string noteDescriber;
+        public Note()
+        {
+            noteVal = 0b0;
+            numNotes = 0;
+            noteDescriber = "";
+        }
+        public Note(int initVal, int initSusLen)
+        {
+            noteVal = (1 << (initVal));
+            susVal = initSusLen;
+            if(initVal < 5 || (initSusLen == 0 && initVal == 7)) // note/suscheck
+            {
+                numNotes++;
+            }
+            else
+            {
+                numNotes = 0b0;
+            }
+            addNoteDescriptor(initVal);
+        }
+
+        public void addVal(int newVal)
+        {
+            noteVal += (1 << newVal);
+            if(newVal < 5 || (susVal == 0 && newVal == 7)) // note/suscheck
+            {
+                numNotes++;
+            }
+            addNoteDescriptor(newVal);
+        }
+
+        private void addNoteDescriptor(int newVal)
+        {
+            noteDescriber += NumToSingleNote(newVal);
+        }
+        private string NumToSingleNote(int n)
+        {
+            switch(n)
+            {
+                case 1 << 0:
+                    return "Green ";
+                case 1 << 1:
+                    return "Red ";
+                case 1 << 2:
+                    return "Yellow ";
+                case 1 << 3:
+                    return "Blue ";
+                case 1 << 4:
+                    return "Orange ";
+                case 1 << 5:
+                    return "Forced ";
+                case 1 << 6:
+                    return "Tap ";
+                case 1 << 7:
+                    // suscheck
+                    return susVal == 0 ? "Open " : "Sustain with length " + susVal + " ";
+                default:
+                    return String.Empty;
+            }
         }
     }
 }
