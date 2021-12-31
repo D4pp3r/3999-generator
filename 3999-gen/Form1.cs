@@ -30,6 +30,11 @@ namespace _3999_gen
         private List<string> mediumChart = new List<string>();
         private List<string> easyChart = new List<string>();
 
+        private Dictionary<int, Note> chartDic;
+
+        private int sectionATick = -1;
+        private int sectionBTick = -1;
+
         public Form1()
         {
             InitializeComponent();
@@ -159,7 +164,7 @@ namespace _3999_gen
 
                 ParseChart(lines);
 
-                Dictionary<int, Note> chartDic = ChartListToDictionary(expertChart);
+                chartDic = ChartListToDictionary(expertChart);
 
                 // clean up raw data
                 sections = getSections(eventsData);
@@ -178,6 +183,24 @@ namespace _3999_gen
                 ErrorMessageAndClose(e, "CHART PARSING ERROR");
 
             }
+        }
+
+        private KeyValuePair<int, Note> nearestNoteAfterSectionStart(Dictionary<int, Note> notes, int sectionStartTimestamp)
+        {
+            KeyValuePair<int, Note> curNote = new KeyValuePair<int, Note>();
+            foreach(KeyValuePair<int, Note> note in notes)
+            {
+                curNote = note;
+                if(note.Key < sectionStartTimestamp)
+                {
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            return curNote;
         }
 
         private static void ErrorMessageAndClose(Exception e, string errorStr)
@@ -238,7 +261,8 @@ namespace _3999_gen
                     startLine = i + 1;
                     return;
                 case "}":
-                    InitChartData(state, startLine, i-1, lines);
+                    endLine = i - 1;
+                    InitChartData(state, startLine, endLine, lines);
                     return;
             }
         }
@@ -449,7 +473,8 @@ namespace _3999_gen
                     Application.Exit();
                 }
             }
-
+            sectionATick = startTick;
+            sectionBTick = endTick;
             return new int[] { startTick, endTick };
         }
 
@@ -497,6 +522,16 @@ namespace _3999_gen
             }
             
         }
+
+        private void cmboBoxSection_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if(chartDic is null && !(expertChart is null))
+            {
+                chartDic = ChartListToDictionary(expertChart);
+            }
+            KeyValuePair<int, Note> note = nearestNoteAfterSectionStart(chartDic, sectionATick);
+            return;
+        }
     }
     public class Note
     {
@@ -514,7 +549,7 @@ namespace _3999_gen
         {
             noteVal = (1 << (initVal));
             susVal = initSusLen;
-            if(initVal < 5 || (initSusLen == 0 && initVal == 7)) // note/suscheck
+            if(initVal < 5 || (initVal == 7)) // note/suscheck
             {
                 numNotes++;
             }
@@ -528,7 +563,7 @@ namespace _3999_gen
         public void addVal(int newVal)
         {
             noteVal += (1 << newVal);
-            if(newVal < 5 || (susVal == 0 && newVal == 7)) // note/suscheck
+            if(newVal < 5 || newVal == 7) // note/suscheck
             {
                 numNotes++;
             }
@@ -537,29 +572,34 @@ namespace _3999_gen
 
         private void addNoteDescriptor(int newVal)
         {
+            if(this.numNotes == 1 && this.susVal > 0)
+            {
+                noteDescriber = "Sustain with length " + susVal + " ";
+            }
             noteDescriber += NumToSingleNote(newVal);
+            
         }
         private string NumToSingleNote(int n)
         {
             switch(n)
             {
-                case 1 << 0:
+                case 0:
                     return "Green ";
-                case 1 << 1:
+                case 1:
                     return "Red ";
-                case 1 << 2:
+                case 2:
                     return "Yellow ";
-                case 1 << 3:
+                case 3:
                     return "Blue ";
-                case 1 << 4:
+                case 4:
                     return "Orange ";
-                case 1 << 5:
+                case 5:
                     return "Forced ";
-                case 1 << 6:
+                case 6:
                     return "Tap ";
-                case 1 << 7:
+                case 7:
                     // suscheck
-                    return susVal == 0 ? "Open " : "Sustain with length " + susVal + " ";
+                    return "Open ";
                 default:
                     return String.Empty;
             }
