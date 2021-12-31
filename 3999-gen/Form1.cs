@@ -16,6 +16,17 @@ namespace _3999_gen
 
         private string filePath;
 
+        private Dictionary<int, string> sections = new Dictionary<int, string>();
+        private Dictionary<string, string> songData = new Dictionary<string, string>();
+
+        private List<string> metaData = new List<string>();
+        private List<string> tempoData = new List<string>();
+        private List<string> eventsData = new List<string>();
+        private List<string> expertChart = new List<string>();
+        private List<string> hardChart = new List<string>();
+        private List<string> mediumChart = new List<string>();
+        private List<string> easyChart = new List<string>();
+
         public Form1()
         {
             InitializeComponent();
@@ -24,7 +35,7 @@ namespace _3999_gen
         // runs the chart generator function
         private void BtnGenerate_Click(object sender, EventArgs e)
         {
-            
+            int[] timestamps = sectionGrabber(sections, cmboBoxSection.Text, cmboBoxSection2.Text);
         }
 
         // reads in the chart data and separates it out appropriately
@@ -36,14 +47,6 @@ namespace _3999_gen
 
             int startLine = 0;
             int endLine = 0;
-
-            List<string> metaData = new List<string>();
-            List<string> tempoData = new List<string>();
-            List<string> eventsData = new List<string>();
-            List<string> expertChart = new List<string>();
-            List<string> hardChart = new List<string>();
-            List<string> mediumChart = new List<string>();
-            List<string> easyChart = new List<string>();
 
             try
             {
@@ -153,8 +156,8 @@ namespace _3999_gen
                 }
 
                 // clean up raw data
-                Dictionary<int, string> sections = getSections(eventsData);
-                Dictionary<string, string> songData = getMetaData(metaData);
+                sections = getSections(eventsData);
+                songData = getMetaData(metaData);
                 
                 // add sections to the drop-down
                 foreach(string section in sections.Values)
