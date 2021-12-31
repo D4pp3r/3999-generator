@@ -105,6 +105,7 @@
             this.cmboBoxSection.Size = new System.Drawing.Size(121, 21);
             this.cmboBoxSection.TabIndex = 4;
             this.cmboBoxSection.Text = "Start Section";
+            this.cmboBoxSection.SelectedIndexChanged += new System.EventHandler(this.cmboBoxSection_SelectedIndexChanged);
             // 
             // rdoBtn3999
             // 

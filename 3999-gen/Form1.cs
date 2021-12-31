@@ -12,27 +12,59 @@ using NAudio;
 
 namespace _3999_gen
 {
+
+
     public partial class Form1 : Form
     {
 
         private string filePath;
 
-        private Dictionary<int, string> sections = new Dictionary<int, string>();
-        private Dictionary<string, string> songData = new Dictionary<string, string>();
+        private Dictionary<int, string> sections;
+        private Dictionary<string, string> songData;
+        private List<string> metaData;
+        private List<string> tempoData;
+        private List<string> eventsData;
+        private List<string> expertChart;
+        private List<string> hardChart;
+        private List<string> mediumChart;
+        private List<string> easyChart;
 
-        private List<string> metaData = new List<string>();
-        private List<string> tempoData = new List<string>();
-        private List<string> eventsData = new List<string>();
-        private List<string> expertChart = new List<string>();
-        private List<string> hardChart = new List<string>();
-        private List<string> mediumChart = new List<string>();
-        private List<string> easyChart = new List<string>();
+        private Dictionary<int, Note> chartDic;
+
+        private int sectionATick;
+        private int sectionBTick;
 
         public Form1()
         {
             InitializeComponent();
         }
+        private static Dictionary<int, Note> ChartListToDictionary(List<string> chartData)
+        {
+            Dictionary<int, Note> output = new Dictionary<int, Note>();
+            foreach (string line in chartData)
+            {
+                Note tempNote;
+                string[] lineAr = line.Split('=');
+                int timestamp = int.Parse(lineAr[0].Trim());
+                string[] noteVals = lineAr[1].Trim().Split(' ');
+                if (!output.ContainsKey(timestamp) && noteVals[0] == "N")
+                {
+                    int noteVal = int.Parse(noteVals[1]);
+                    int susLen = int.Parse(noteVals[2]);
+                    tempNote = new Note(noteVal, susLen);
+                    output.Add(timestamp, tempNote);
+                }
+                else if (noteVals[0] == "N")
+                {
+                    int noteVal = int.Parse(noteVals[1]);
+                    Note curNote = output[timestamp];
+                    curNote.addVal(noteVal);
+                    output[timestamp] = curNote;
+                }
 
+            }
+            return output;
+        }
         // runs the chart generator function
         private void BtnGenerate_Click(object sender, EventArgs e)
         {
@@ -51,7 +83,7 @@ namespace _3999_gen
                     {
                         numNotes = int.Parse(txtBoxLoopCount.Text) * noteCount(section);
                     }
-                    catch(Exception e1)
+                    catch (Exception e1)
                     {
                         ErrorMessageAndClose(e1, "BAD NOTE COUNT DETECTED");
                     }
@@ -62,7 +94,9 @@ namespace _3999_gen
                 //writeChart();
             }
 
-            else if(rdoBtnSong.Checked)
+
+
+            else if (rdoBtnSong.Checked)
             {
                 if (rdoBtnIteration.Checked)
                 {
@@ -129,6 +163,8 @@ namespace _3999_gen
 
                 ParseChart(lines);
 
+                chartDic = ChartListToDictionary(expertChart);
+
                 // clean up raw data
                 sections = getSections(eventsData);
                 songData = getMetaData(metaData);
@@ -136,7 +172,11 @@ namespace _3999_gen
                 InitComboBoxes();
 
                 // sets name label to song title
-                lblSong.Text = songData["Name"].Replace("\"", "") + " by " + songData["Artist"].Replace("\"", "") + " (Charted by: " + songData["Charter"].Replace("\"", "") + ")";
+                string songName = !songData.ContainsKey("Name") ? "Unknown Name" : songData["Name"];
+                string songArtist = !songData.ContainsKey("Artist") ? "Unknown Artist" : songData["Artist"];
+                string songCharter = !songData.ContainsKey("Charter") ? "Unknown Charter" : songData["Charter"];
+                lblSong.Text = songName.Replace("\"", "") + " by " + songArtist.Replace("\"", "") + " (Charted by: " + songCharter.Replace("\"", "") + ")";
+
             }
 
             catch (Exception e)
@@ -145,6 +185,24 @@ namespace _3999_gen
                 ErrorMessageAndClose(e, "CHART PARSING ERROR");
 
             }
+        }
+
+        private KeyValuePair<int, Note> nearestNoteAfterSectionStart(Dictionary<int, Note> notes, int sectionStartTimestamp)
+        {
+            KeyValuePair<int, Note> curNote = new KeyValuePair<int, Note>();
+            foreach (KeyValuePair<int, Note> note in notes)
+            {
+                curNote = note;
+                if (note.Key < sectionStartTimestamp)
+                {
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            return curNote;
         }
 
         private static void ErrorMessageAndClose(Exception e, string errorStr)
@@ -171,7 +229,7 @@ namespace _3999_gen
 
         private void HandleLines(string[] lines, ref int state, ref int startLine, ref int endLine, int i)
         {
-            
+
             switch (lines[i])
             {
                 case "[Song]":
@@ -205,19 +263,41 @@ namespace _3999_gen
                     startLine = i + 1;
                     return;
                 case "}":
-                    InitChartData(state, startLine, i-1, lines);
+                    endLine = i - 1;
+                    InitChartData(state, startLine, endLine, lines);
                     return;
             }
         }
 
         private void InitComboBoxes()
         {
+            Graphics g = this.CreateGraphics();
+            Rectangle rectangle = new Rectangle();
+            PaintEventArgs e = new PaintEventArgs(g, rectangle);
+
             // add sections to the drop-down
+            int i = 1;
+            float maxWidth = 0f;
+            Font font = cmboBoxSection.Font;
+            SizeF stringSize = new SizeF();
+            
             foreach (string section in sections.Values)
             {
-                cmboBoxSection.Items.Add(section);
-                cmboBoxSection2.Items.Add(section);
+                string curSection = i.ToString() + ": " + section;
+                stringSize = e.Graphics.MeasureString(curSection, font);
+                if(stringSize.Width > maxWidth)
+                {
+                    float newWidth = stringSize.Width + 10;
+                    cmboBoxSection.DropDownWidth = Convert.ToInt32(newWidth);
+                    cmboBoxSection2.DropDownWidth = Convert.ToInt32(newWidth);
+                    maxWidth = stringSize.Width;
+                }
+                cmboBoxSection.Items.Add(curSection);
+                cmboBoxSection2.Items.Add(curSection);
+                i++;
             }
+            cmboBoxSection.SelectedIndex = 0;
+            cmboBoxSection2.SelectedIndex = 0;
         }
 
         private void InitChartData(int state, int startLine, int endLine, string[] lines)
@@ -281,9 +361,10 @@ namespace _3999_gen
         private Dictionary<int, string> getSections(List<string> data)
         {
             Dictionary<int, string> output = new Dictionary<int, string>();
-            for(int i = 0; i<data.Count; i++)
+            for (int i = 0; i < data.Count; i++)
             {
                 string[] subs = data[i].Trim().Split(' ');
+               
                 AddSections(output, subs);
             }
             return output;
@@ -296,17 +377,28 @@ namespace _3999_gen
             {
                 sectionTemp = concatSectionTemp(subs, sectionTemp);
                 sectionTemp = sectionTemp.Split('\"')[0];
+                
                 output.Add(int.Parse(subs[0]), sectionTemp);
             }
         }
 
         private static string concatSectionTemp(string[] subs, string sectionTemp)
         {
+            if(subs.Length == 5)
+            {
+                string[] tempAr = subs[4].Split('_');
+                string[] newSubs = new string[4 + tempAr.Length];
+                for(int i = 0; i < 4; i++)
+                {
+                    newSubs[i] = subs[i];
+                }
+                tempAr.CopyTo(newSubs, 4);
+                subs = newSubs;
+            }
             for (int x = 4; x < subs.Length; x++)
             {
-                sectionTemp  = sectionTemp + subs[x]+" ";
+                sectionTemp = sectionTemp + subs[x] + " ";
             }
-
             return sectionTemp;
         }
 
@@ -316,12 +408,12 @@ namespace _3999_gen
         {
             string output = "";
             output += "[Song]\n{\n";
-            foreach(string str in metaData)
+            foreach (string str in metaData)
             {
                 output += str + '\n';
             }
             output += "}\n[SyncTrack]\n{\n";
-            foreach(string str in tempoData)
+            foreach (string str in tempoData)
             {
                 output += str + '\n';
             }
@@ -359,8 +451,8 @@ namespace _3999_gen
         private Dictionary<string, string> getMetaData(List<string> data)
         {
             Dictionary<string, string> output = new Dictionary<string, string>();
-            
-            for(int i = 0; i<data.Count; i++)
+
+            for (int i = 0; i < data.Count; i++)
             {
                 string[] subs = data[i].Trim().Split('=');
                 output.Add(subs[0].Trim(), subs[1].Trim());
@@ -375,7 +467,7 @@ namespace _3999_gen
             int output = 0;
             string[] noteLines = new string[] { };
 
-            foreach(string line in chartData)
+            foreach (string line in chartData)
             {
                 if (line.Contains("N"))
                 {
@@ -397,12 +489,12 @@ namespace _3999_gen
             int startTick = 0;
             int endTick = 0;
 
-            Dictionary<int, string> orderedSections = null; 
+            Dictionary<int, string> orderedSections = null;
             try
             {
                 orderedSections = sections.OrderBy(key => key.Key).ToDictionary(key => key.Key, key => key.Value);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 ErrorMessageAndClose(e, "CASTING ERROR");
             }
@@ -411,12 +503,13 @@ namespace _3999_gen
 
             if (endTick - startTick <= 0)
             {
-                if(MessageBox.Show("naughty ch players go to the pokey") == DialogResult.OK)
+                if (MessageBox.Show("naughty ch players go to the pokey") == DialogResult.OK)
                 {
                     Application.Exit();
                 }
             }
-
+            sectionATick = startTick;
+            sectionBTick = endTick;
             return new int[] { startTick, endTick };
         }
 
@@ -424,7 +517,7 @@ namespace _3999_gen
         {
             foreach (KeyValuePair<int, string> section in orderedSections)
             {
-                switch(section.Value)
+                switch (section.Value)
                 {
                     case var val when val == startSection:
                         startTick = section.Key;
@@ -438,7 +531,10 @@ namespace _3999_gen
 
         private List<string> chartMultiply(List<string> chartData, int numNotes)
         {
-            return null;
+            List<string> output = new List<string>();
+            int curNumNotes = noteCount(chartData);
+
+            return output;
         }
 
         // on file select, assign the path to filePath
@@ -447,19 +543,125 @@ namespace _3999_gen
             filePath = fileDialog.FileName;
         }
 
+        private void InitFields()
+        {
+            filePath = null;
+
+            sections = new Dictionary<int, string>();
+            songData = new Dictionary<string, string>();
+
+            metaData = new List<string>();
+            tempoData = new List<string>();
+            eventsData = new List<string>();
+            expertChart = new List<string>();
+            hardChart = new List<string>();
+            mediumChart = new List<string>();
+            easyChart = new List<string>();
+
+            chartDic = null;
+
+            sectionATick = -1;
+            sectionBTick = -1;
+        }
+
         // opens the file dialog and reads in chart data
         private void BtnLoad_Click(object sender, EventArgs e)
         {
+            InitFields();
             fileDialog.RestoreDirectory = true;
             fileDialog.Filter = "CHART files (*.chart)|*.chart|All files (*.*)|*.*";
             DialogResult res = fileDialog.ShowDialog();
-            if(res == DialogResult.OK)
+            if (res == DialogResult.OK)
             {
                 cmboBoxSection.Items.Clear();
                 cmboBoxSection2.Items.Clear();
                 readChart(filePath);
             }
+
             
+
+        }
+
+        private void cmboBoxSection_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (chartDic is null && !(expertChart is null))
+            {
+                chartDic = ChartListToDictionary(expertChart);
+            }
+            KeyValuePair<int, Note> note = nearestNoteAfterSectionStart(chartDic, sectionATick);
+            return;
+        }
+    }
+    public class Note
+    {
+        private int noteVal;
+        private int susVal;
+        private int numNotes;
+        private string noteDescriber;
+        public Note()
+        {
+            noteVal = 0b0;
+            numNotes = 0;
+            noteDescriber = "";
+        }
+        public Note(int initVal, int initSusLen)
+        {
+            noteVal = (1 << (initVal));
+            susVal = initSusLen;
+            if (initVal < 5 || (initVal == 7)) // note/suscheck
+            {
+                numNotes++;
+            }
+            else
+            {
+                numNotes = 0b0;
+            }
+            addNoteDescriptor(initVal);
+        }
+
+        public void addVal(int newVal)
+        {
+            noteVal += (1 << newVal);
+            if (newVal < 5 || newVal == 7) // note/suscheck
+            {
+                numNotes++;
+            }
+            addNoteDescriptor(newVal);
+        }
+
+        private void addNoteDescriptor(int newVal)
+        {
+            if (this.numNotes == 1 && this.susVal > 0)
+            {
+                noteDescriber = "Sustain with length " + susVal + " ";
+            }
+            noteDescriber += NumToSingleNote(newVal);
+
+        }
+        private string NumToSingleNote(int n)
+        {
+            switch (n)
+            {
+                case 0:
+                    return "Green ";
+                case 1:
+                    return "Red ";
+                case 2:
+                    return "Yellow ";
+                case 3:
+                    return "Blue ";
+                case 4:
+                    return "Orange ";
+                case 5:
+                    return "Forced ";
+                case 6:
+                    return "Tap ";
+                case 7:
+                    // suscheck
+                    return "Open ";
+                default:
+                    return String.Empty;
+            }
         }
     }
 }
