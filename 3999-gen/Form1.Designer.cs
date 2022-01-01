@@ -67,7 +67,7 @@
             // 
             // btnLoad
             // 
-            this.btnLoad.Location = new System.Drawing.Point(12, 28);
+            this.btnLoad.Location = new System.Drawing.Point(12, 37);
             this.btnLoad.Name = "btnLoad";
             this.btnLoad.Size = new System.Drawing.Size(75, 23);
             this.btnLoad.TabIndex = 1;
@@ -105,6 +105,7 @@
             this.cmboBoxSection.Size = new System.Drawing.Size(121, 21);
             this.cmboBoxSection.TabIndex = 4;
             this.cmboBoxSection.Text = "Start Section";
+            this.cmboBoxSection.SelectedIndexChanged += new System.EventHandler(this.cmboBoxSection_SelectedIndexChanged);
             // 
             // rdoBtn3999
             // 
@@ -179,6 +180,7 @@
             // 
             this.lblSong.AutoSize = true;
             this.lblSong.Location = new System.Drawing.Point(9, 9);
+            this.lblSong.MaximumSize = new System.Drawing.Size(420, 30);
             this.lblSong.Name = "lblSong";
             this.lblSong.Size = new System.Drawing.Size(94, 13);
             this.lblSong.TabIndex = 12;
