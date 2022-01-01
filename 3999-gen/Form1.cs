@@ -8,7 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
-using NAudio;
+using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using System.Text.RegularExpressions;
 
 namespace _3999_gen
@@ -112,7 +113,8 @@ namespace _3999_gen
                 }
 
                 chartOutput = chartMultiply(expertChart, numNotes);
-
+                string sourcePath = filePath.Substring(0, filePath.Length - 11) + songData["MusicStream"].Trim('"');
+                constructWav(sourcePath, int.Parse(txtBoxLoopCount.Text));
             }
 
 
@@ -166,7 +168,7 @@ namespace _3999_gen
             {
                 // grabs all lines from file
                 string[] lines = File.ReadAllLines(filename);
-                
+
                 ParseChart(lines);
 
                 chartDic = ChartListToDictionary(expertChart);
@@ -180,7 +182,7 @@ namespace _3999_gen
                 string[] songini = File.ReadAllLines(filename.Split(new[] { "notes.chart" }, StringSplitOptions.None)[0] + "song.ini");
                 string songName = null, songArtist = null, songCharter = null;
                 bool hasSongName, hasSongArtist, hasSongCharter;
-                foreach(string entry in songini)
+                foreach (string entry in songini)
                 {
                     string newEntry = StripHTML(entry);
                     hasSongName = newEntry.Trim().ToLower().StartsWith("name");
@@ -309,7 +311,7 @@ namespace _3999_gen
             {
                 string curSection = StripHTML(i.ToString() + ": " + section);
                 stringSize = e.Graphics.MeasureString(curSection, font);
-                if(stringSize.Width > maxWidth)
+                if (stringSize.Width > maxWidth)
                 {
                     float newWidth = stringSize.Width + 10;
                     cmboBoxSection.DropDownWidth = Convert.ToInt32(newWidth);
@@ -320,7 +322,7 @@ namespace _3999_gen
                 cmboBoxSection2.Items.Add(curSection);
                 i++;
             }
-            System.GC.Collect(); // YO I FOUND WHERE THE MEMORY WAS LEAKING
+            GC.Collect(); // YO I FOUND WHERE THE MEMORY WAS LEAKING
             cmboBoxSection.SelectedIndex = 0;
             cmboBoxSection2.SelectedIndex = 0;
         }
@@ -389,7 +391,7 @@ namespace _3999_gen
             for (int i = 0; i < data.Count; i++)
             {
                 string[] subs = data[i].Trim().Split(' ');
-               
+
                 AddSections(output, subs);
             }
             return output;
@@ -402,18 +404,18 @@ namespace _3999_gen
             {
                 sectionTemp = concatSectionTemp(subs, sectionTemp);
                 sectionTemp = sectionTemp.Split('\"')[0];
-                
+
                 output.Add(int.Parse(subs[0]), sectionTemp);
             }
         }
 
         private static string concatSectionTemp(string[] subs, string sectionTemp)
         {
-            if(subs.Length == 5)
+            if (subs.Length == 5)
             {
                 string[] tempAr = subs[4].Split('_');
                 string[] newSubs = new string[4 + tempAr.Length];
-                for(int i = 0; i < 4; i++)
+                for (int i = 0; i < 4; i++)
                 {
                     newSubs[i] = subs[i];
                 }
@@ -526,7 +528,7 @@ namespace _3999_gen
 
             SetStartEndTicks(startSection, endSection, ref startTick, ref endTick, orderedSections);
 
-            if (endTick - startTick <= 0)
+            if (endTick - startTick < 0)
             {
                 if (MessageBox.Show("naughty ch players go to the pokey") == DialogResult.OK)
                 {
@@ -604,7 +606,7 @@ namespace _3999_gen
                 readChart(filePath);
             }
 
-            
+
 
         }
 
@@ -616,6 +618,29 @@ namespace _3999_gen
             }
             KeyValuePair<int, Note> note = nearestNoteAfterSectionStart(chartDic, sectionATick);
             return;
+        }
+
+        private void constructWav(string sourcePath, int iterations)
+        {
+            WaveFormat waveFormat = new WaveFormat(8000, 8, 2);
+            string outputPath = sourcePath.Substring(0, sourcePath.Length - 4) + "-3999.wav";
+
+            StreamReader inputStream = new StreamReader(sourcePath);
+            StreamWriter outputStream = new StreamWriter(outputPath);
+
+            using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new Mp3FileReader(inputStream.BaseStream)))
+            using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
+            {
+                byte[] bytes = new byte[waveStream.Length];
+                waveStream.Read(bytes, 0, (int)waveStream.Length);
+
+                for (int i = 0; i < iterations; i++)
+                {
+                    waveFileWriter.Write(bytes, 0, bytes.Length);
+                }
+
+                waveFileWriter.Flush();
+            }
         }
     }
     public class Note
@@ -690,4 +715,46 @@ namespace _3999_gen
             }
         }
     }
+    public static class WavFileUtils
+    {
+        public static void TrimWavFile(string inPath, string outPath, TimeSpan cutFromStart, TimeSpan cutFromEnd)
+        {
+            using (WaveFileReader reader = new WaveFileReader(inPath))
+            {
+                using (WaveFileWriter writer = new WaveFileWriter(outPath, reader.WaveFormat))
+                {
+                    int bytesPerMillisecond = reader.WaveFormat.AverageBytesPerSecond / 1000;
+
+                    int startPos = (int)cutFromStart.TotalMilliseconds * bytesPerMillisecond;
+                    startPos = startPos - startPos % reader.WaveFormat.BlockAlign;
+
+                    int endBytes = (int)cutFromEnd.TotalMilliseconds * bytesPerMillisecond;
+                    endBytes = endBytes - endBytes % reader.WaveFormat.BlockAlign;
+                    int endPos = (int)reader.Length - endBytes;
+
+                    TrimWavFile(reader, writer, startPos, endPos);
+                }
+            }
+        }
+
+        private static void TrimWavFile(WaveFileReader reader, WaveFileWriter writer, int startPos, int endPos)
+        {
+            reader.Position = startPos;
+            byte[] buffer = new byte[1024];
+            while (reader.Position < endPos)
+            {
+                int bytesRequired = (int)(endPos - reader.Position);
+                if (bytesRequired > 0)
+                {
+                    int bytesToRead = Math.Min(bytesRequired, buffer.Length);
+                    int bytesRead = reader.Read(buffer, 0, bytesToRead);
+                    if (bytesRead > 0)
+                    {
+                        writer.Write(buffer, 0, bytesRead);
+                    }
+                }
+            }
+        }
+    }
+
 }
