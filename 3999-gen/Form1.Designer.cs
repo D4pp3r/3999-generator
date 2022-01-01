@@ -58,7 +58,7 @@
             this.btnGenerate.TabIndex = 0;
             this.btnGenerate.Text = "Generate!";
             this.btnGenerate.UseVisualStyleBackColor = true;
-            this.btnGenerate.Click += new System.EventHandler(this.BtnGenerate_Click);
+            this.btnGenerate.Click += new System.EventHandler(this.btnGenerate_Click);
             // 
             // fileDialog
             // 
@@ -73,7 +73,7 @@
             this.btnLoad.TabIndex = 1;
             this.btnLoad.Text = "Load Chart";
             this.btnLoad.UseVisualStyleBackColor = true;
-            this.btnLoad.Click += new System.EventHandler(this.BtnLoad_Click);
+            this.btnLoad.Click += new System.EventHandler(this.btnLoad_Click);
             // 
             // rdoBtnSection
             // 
