@@ -177,7 +177,6 @@ namespace _3999_gen
 
                 InitComboBoxes();
 
-
                 string[] songini = File.ReadAllLines(filename.Split(new[] { "notes.chart" }, StringSplitOptions.None)[0] + "song.ini");
                 string songName = null, songArtist = null, songCharter = null;
                 bool hasSongName, hasSongArtist, hasSongCharter;
@@ -190,6 +189,7 @@ namespace _3999_gen
                     if (hasSongArtist) songArtist = newEntry.Trim().Split('=')[1].Trim();
                     hasSongCharter = newEntry.Trim().ToLower().StartsWith("charter");
                     if (hasSongCharter) songCharter = newEntry.Trim().Split('=')[1].Trim();
+                    if (!(songName is null || songArtist is null || songCharter is null)) break;
                 }
 
                 if (songName is null) songName = "Unknown Name";
@@ -320,7 +320,7 @@ namespace _3999_gen
                 cmboBoxSection2.Items.Add(curSection);
                 i++;
             }
-            //System.GC.Collect(); // YO I FOUND WHERE THE MEMORY WAS LEAKING
+            System.GC.Collect(); // YO I FOUND WHERE THE MEMORY WAS LEAKING
             cmboBoxSection.SelectedIndex = 0;
             cmboBoxSection2.SelectedIndex = 0;
         }
