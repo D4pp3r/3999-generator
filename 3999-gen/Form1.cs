@@ -131,8 +131,8 @@ namespace _3999_gen
 
             bool tickFlag = false;
 
-            int index = cmboBoxSection2.SelectedIndex;
-            if (index == cmboBoxSection2.Items.Count - 1)
+            int index = cmboBoxSection2.SelectedIndex + 1;
+            if (index == cmboBoxSection2.Items.Count)
             {
                 tickB = chart.lastTimeStamp;
             }
@@ -145,7 +145,7 @@ namespace _3999_gen
                     SectionEvent section = globalEvent as SectionEvent;
                     if (tickFlag)
                     {
-                        tickB = section.timestamp;
+                        tickB = section.timestamp - 1;
                         break;
                     }
                     if (index == section.sectionIndex)
@@ -162,16 +162,17 @@ namespace _3999_gen
         {
             funnycode.Enqueue(e.KeyChar);
             string curstring = new string(funnycode.ToArray());
-            if (curstring == "oboyoboy" || curstring == "54535453")
+            if (curstring == "oboyoboy")
             {
                 if (MessageBox.Show("Hyperspeed Unlocked!") == DialogResult.OK)
                 {
                     Application.Exit();
                 }
             }
-            else if (curstring == "borm tim")
+
+            else if(curstring == "borm tim")
             {
-                if (MessageBox.Show("Buy Bormo time guitars from BormoTime.com") == DialogResult.OK)
+                if (MessageBox.Show("Get your BormoTime Guitar from bormotime.com today!") == DialogResult.OK)
                 {
                     Application.Exit();
                 }
@@ -183,9 +184,7 @@ namespace _3999_gen
             if (chart is null) return;
             if (tickA == -1 || tickB == -1) return;
             ChartGenerator gen = new ChartGenerator(chart);
-
             gen.Generate(3999, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
-
         }
 
         private void constructWav(string sourcePath, int iterations)
@@ -647,45 +646,22 @@ namespace _3999_gen
             }
         }
 
-        public TimestampedEvent GetNextTimeStampedEvent(int timestamp)
+        public NoteEvent GetNextNote(int timestamp, List<ChartEvent> eventList)
         {
-            ChartEvent c = GetNextChartEvent(timestamp, true);
-            SyncEvent s = GetNextSyncEvent(timestamp, true);
-            if (c is null && s is null) return null;
-            if (c is null) return s;
-            if (s is null) return c;
-            return s.timestamp < c.timestamp ? s as TimestampedEvent : c as TimestampedEvent;
-        }
-
-        // OPTIONAL BOOL: FOR ChartEvent.eventType == "N", "S", "E"
-        // pass TRUE to bypass
-        public ChartEvent GetNextChartEvent(int timestamp, bool optionalBool)
-        {
-            ChartEvent c = null;
-
-            foreach (ChartEvent e in ExpertData)
+            NoteEvent note = null;
+            foreach (ChartEvent e in eventList)
             {
-                if (e.timestamp <= timestamp || !optionalBool) continue;
-                c = e;
-                break;
+                if (e.eventType == "N")
+                {
+                    note = e as NoteEvent;
+                    if (timestamp >= note.timestamp)
+                    {
+                        break;
+                    }
+                }
             }
-
-            return c;
-        }
-
-        // OPTIONAL BOOL: FOR ChartEvent.eventType == "B", "TS"
-        public SyncEvent GetNextSyncEvent(int timestamp, bool optionalBool)
-        {
-            SyncEvent c = null;
-
-            foreach (SyncEvent e in SyncData)
-            {
-                if (e.timestamp <= timestamp || !optionalBool) continue;
-                c = e;
-                break;
-            }
-
-            return c;
+            if (note is null) ErrorMessageAndClose(new Exception("no next note"), "there was no next note, to the pokey with you");
+            return note;
         }
 
 
@@ -695,41 +671,94 @@ namespace _3999_gen
     public class ChartGenerator
     {
         private List<string> output;
-        private int numNotes;
-        private int iterations;
+
+        private int startTimestamp;
+
+        private int endTimestamp;
+
         private string startSection;
+
         private string endSection;
-        //private int startTimestamp;
-        //private int endTimestamp;
+
+        private int startIndex;
+
+        private int endIndex;
+
+        private NoteEvent lastNote;
+
+        private int sectionLength;
+
+        private int iterations;
+
+        private int nonoNotes;
+
+        private int newNoteCount;
+
+        private List<string> timestamps;
+
+        private int cutoffTimestamp;
+
         public Chart Chart { get; private set; }
+
+        public int numNotes { get; private set; }
 
         public ChartGenerator(Chart baseChart)
         {
             this.Chart = baseChart;
+            this.newNoteCount = 0;
+            this.startIndex = 0;
+            this.endIndex = 0;
+            this.sectionLength = 0;
+            this.iterations = 0;
+            this.nonoNotes = 0;
+            this.cutoffTimestamp = 0;
             this.output = new List<string>();
+            this.timestamps = new List<string>();
         }
 
-        public void Generate(int numNotes, int startTick, int endTick, string path)
+        public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path)
         {
             this.numNotes = numNotes;
-            //this.startSection = startSection;
-            //this.endSection = endSection;
-            //this.startTimestamp = startTimestamp;
-            //this.endTimestamp = endTimestamp;
-            //int sectionLength = endTimestamp - startTimestamp;
+            this.startTimestamp = startTimestamp;
+            this.endTimestamp = endTimestamp;
+            this.startSection = startSection;
+            this.endSection = endSection;
 
-            foreach(SyncEvent s in Chart.SyncData)
+            foreach (ChartEvent chartevent in Chart.ExpertData)
             {
-                if (s.eventType == "section")
+                if (chartevent.eventType == "N")
                 {
+                    NoteEvent note = chartevent as NoteEvent;
+
+                    if (note.timestamp == startTimestamp)
+                    {
+                        startIndex = note.NoteIndex;
+                    }
+
+                    else if (note.timestamp < endTimestamp)
+                    {
+                        lastNote = note;
+                    }
                 }
+            }
+
+            endIndex = lastNote.NoteIndex;
+
+            sectionLength = endIndex - startIndex;
+
+            iterations = numNotes / sectionLength;
+
+            nonoNotes = numNotes % sectionLength;
+
+            if (nonoNotes > 0)
+            {
+                iterations += 1;
             }
 
             GenerateMetaData();
             GenerateSyncData(iterations);
-            GenerateEventData(iterations);
+            GenerateEventData();
             GenerateExpertChart(iterations);
-            TrimChart();
 
             using (StreamWriter writer = File.CreateText(path + "\\notes-3999.chart"))
             {
@@ -747,25 +776,19 @@ namespace _3999_gen
 
             foreach (string key in Chart.MetaData.Keys)
             {
-
-                switch (key)
+                if (key == "Name")
                 {
-                    case var k when k == "Name":
-                        output.Add($" {key} = \"{numNotes} {Chart.chartName} ({startSection} - {endSection})\"");
-                        break;
-                    case var k when k == "Artist":
-                        output.Add($" {key} = \"{Chart.chartArtist}\"");
-                        break;
-                    case var k when k == "Charter":
-                        output.Add($" {key} = \"{Chart.charter}\"");
-                        break;
-                    case var k when k == "Album" || key == "Year" || key == "Genre" || key == "MediaType" || key == "MusicStream":
-                        output.Add($" {key} = \"{Chart.MetaData[key]}\"");
-                        break;
-                    default:
-                        output.Add($" {key} = {Chart.MetaData[key]}");
-                        break;
+                    output.Add("  " + key + " = \"" + Chart.MetaData[key] + " - " + startSection + " to " + endSection + " " + numNotes + "\"");
+                }
 
+                else if (key == "Artist" || key == "Charter" || key == "Album" || key == "Year" || key == "Genre" || key == "MediaType" || key == "MusicStream")
+                {
+                    output.Add("  " + key + " = \"" + Chart.MetaData[key] + "\"");
+                }
+
+                else
+                {
+                    output.Add("  " + key + " = " + Chart.MetaData[key]);
                 }
             }
 
@@ -779,16 +802,16 @@ namespace _3999_gen
 
             for (int i = 0; i < iterations; i++)
             {
-                foreach (SyncEvent sync in Chart.SyncData)
+                foreach (SyncEvent chartevent in Chart.SyncData)
                 {
-                    if (sync.timestamp >= startTimestamp && sync.timestamp < endTimestamp)
+                    if (chartevent.timestamp == 0)
                     {
-                        int sectionLength = endTimestamp - startTimestamp;
-                        int relTimestamp = sync.timestamp - startTimestamp;
-                        int absTimestamp = (i * sectionLength) + relTimestamp;
+                        output.Add("  " + (chartevent.timestamp + (i * (endTimestamp - startTimestamp))) + " = " + chartevent.eventType + " " + chartevent.RawData);
+                    }
 
-                        output.Add($" {absTimestamp} = {sync.RawData}");
-
+                    else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    {
+                        output.Add("  " + (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))) + " = " + chartevent.eventType + chartevent.RawData);
                     }
                 }
             }
@@ -796,12 +819,18 @@ namespace _3999_gen
             output.Add("}");
         }
 
-        private void GenerateEventData(int iterations)
+        private void GenerateEventData()
         {
             output.Add("[Events]");
             output.Add("{");
 
-
+            foreach (GlobalEvent chartevent in Chart.EventsData)
+            {
+                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                {
+                    output.Add("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
+                }
+            }
 
             output.Add("}");
         }
@@ -811,12 +840,34 @@ namespace _3999_gen
             output.Add("[ExpertSingle]");
             output.Add("{");
 
+            for (int i = 0; i < iterations; i++)
+            {
+                foreach (ChartEvent chartevent in Chart.ExpertData)
+                {
+                    if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    {
+                        output.Add("  " + (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))) + " = " + chartevent.RawData);
+
+                        if (!timestamps.Contains((chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))).ToString()) && chartevent.eventType == "N")
+                        {
+                            timestamps.Add((chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))).ToString());
+                            newNoteCount++;
+                        }
+
+                        if (newNoteCount >= numNotes)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                if (newNoteCount >= numNotes)
+                {
+                    break;
+                }
+            }
+
             output.Add("}");
-        }
-
-        private void TrimChart()
-        {
-
         }
     }
 
