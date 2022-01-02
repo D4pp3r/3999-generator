@@ -563,9 +563,115 @@ namespace _3999_gen
 
     public class ChartGenerator
     {
-        public ChartGenerator(Chart baseChart, int numNotes, string startSection, string endSection)
-        {
+        private string[] output;
 
+        private int startTimestamp;
+
+        private int endTimestamp;
+
+        public Chart Chart { get; private set; }
+
+        public int numNotes { get; private set; }
+
+        public string startSection { get; private set; }
+
+        public string endSection { get; private set; }
+
+        public ChartGenerator(Chart baseChart)
+        {
+            this.Chart = baseChart;
+        }
+
+        public void Generate(int numNotes, string startSection, string endSection)
+        {
+            this.numNotes = numNotes;
+            this.startSection = startSection;
+            this.endSection = endSection;
+
+            foreach(GlobalEvent chartevent in Chart.EventsData)
+            {
+                if(chartevent.eventType == "section")
+                {
+                    SectionEvent sectionevent = (SectionEvent)chartevent;
+
+                    if(sectionevent.sectionName == startSection)
+                    {
+                        startTimestamp = sectionevent.timestamp;
+                    }
+
+                    else if(sectionevent.sectionName == endSection)
+                    {
+                        endTimestamp = sectionevent.timestamp;
+                    }
+                }
+            }
+
+            GenerateMetaData();
+        }
+
+        private void GenerateMetaData()
+        {
+            output.Append("[Song]");
+            output.Append("{");
+
+            foreach (string key in Chart.MetaData.Keys)
+            {
+                if (key == "Name")
+                {
+                    output.Append("  " + key + " = \"" + Chart.MetaData[key] + " - " + startSection + " to " + endSection + " " + numNotes + "\"");
+                }
+
+                else if (key == "Artist" || key == "Charter" || key == "Album" || key == "Year" || key == "Genre" || key == "MediaType" || key == "MusicStream")
+                {
+                    output.Append("  " + key + " = \"" + Chart.MetaData[key] + "\"");
+                }
+
+                else
+                {
+                    output.Append("  " + key + " = " + Chart.MetaData[key]);
+                }
+            }
+
+            output.Append("}");
+        }
+
+        private void GenerateSyncData()
+        {
+            output.Append("[SyncTrack]");
+            output.Append("{");
+
+            foreach(SyncEvent chartevent in Chart.SyncData)
+            {
+                if(chartevent.timestamp == 0)
+                {
+                    if(chartevent.eventType == "TS")
+                    {
+                        TSEvent ts = (TSEvent)chartevent;
+                        output.Append("  0 = TS " + ts.TSNum + " " + ts.TSDenom);
+                    }
+
+                    else if(chartevent.eventType == "B")
+                    {
+                        BPMEvent bpm = (BPMEvent)chartevent;
+                        output.Append("  0 = B " + bpm.BPM);
+                    }
+                }
+
+                else if(chartevent.timestamp > startTimestamp && chartevent.timestamp < endTimestamp)
+                {
+                    if (chartevent.eventType == "TS")
+                    {
+                        TSEvent ts = (TSEvent)chartevent;
+                        output.Append("  0 = TS " + ts.TSNum + " " + ts.TSDenom);
+                    }
+
+                    else if (chartevent.eventType == "B")
+                    {
+                        BPMEvent bpm = (BPMEvent)chartevent;
+                        output.Append("  0 = B " + bpm.BPM);
+                    }
+                }
+            }
         }
     }
 
