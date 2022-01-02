@@ -600,7 +600,7 @@ namespace _3999_gen
             {
                 if(chartevent.eventType == "section")
                 {
-                    SectionEvent sectionevent = (SectionEvent)chartevent;
+                    SectionEvent sectionevent = chartevent as SectionEvent;
 
                     if(sectionevent.sectionName == startSection)
                     {
