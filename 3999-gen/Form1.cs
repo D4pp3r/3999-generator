@@ -16,7 +16,7 @@ using System.Text.RegularExpressions;
 
 namespace _3999_gen
 {
-
+    
 
     public partial class Form1 : Form
     {
@@ -26,6 +26,8 @@ namespace _3999_gen
 
         private int tickA;
         private int tickB;
+
+        private LimitedQueue<char> funnycode = new LimitedQueue<char>(8);
 
         public Form1()
         {
@@ -156,13 +158,25 @@ namespace _3999_gen
            
         }
 
-
+        void Form1_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            funnycode.Enqueue(e.KeyChar);
+            string curstring = new string(funnycode.ToArray());
+            if (curstring == "oboyoboy")
+            {
+                if(MessageBox.Show("Hyperspeed Unlocked!") == DialogResult.OK)
+                {
+                    Application.Exit();
+                }
+            }
+            
+        }
         private void btnGenerate_Click(object sender, EventArgs e)
         {
-            if (!(chart is null) && MessageBox.Show("Skill Issue") == DialogResult.OK)
-            {
-                Application.Exit();
-            }
+            if (chart is null) return;
+            if (tickA == -1 || tickB == -1) return;
+            ChartGenerator gen = new ChartGenerator(chart);
+
         }
 
         private void constructWav(string sourcePath, int iterations)
@@ -829,6 +843,25 @@ namespace _3999_gen
             }
 
             
+        }
+    }
+
+    public class LimitedQueue<T> : Queue<T>
+    {
+        public int Limit { get; set; }
+
+        public LimitedQueue(int limit) : base(limit)
+        {
+            Limit = limit;
+        }
+
+        public new void Enqueue(T item)
+        {
+            while (Count >= Limit)
+            {
+                Dequeue();
+            }
+            base.Enqueue(item);
         }
     }
 

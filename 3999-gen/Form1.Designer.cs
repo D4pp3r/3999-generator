@@ -231,6 +231,7 @@
             this.Controls.Add(this.btnLoad);
             this.Controls.Add(this.btnGenerate);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.KeyPreview = true;
             this.MaximizeBox = false;
             this.MaximumSize = new System.Drawing.Size(429, 336);
             this.MinimumSize = new System.Drawing.Size(429, 336);
@@ -242,6 +243,7 @@
             this.grpBoxSelection.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
+            this.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.Form1_KeyPress);
 
         }
 
