@@ -193,8 +193,8 @@ namespace _3999_gen
 
             else
             {
-                int[] seconds = TimestampToSeconds(chart, tickA, tickB);
-                if (seconds != new int[] { -1, -1 })
+                float[] seconds = TimestampToSeconds(chart, tickA, tickB);
+                if (seconds != new float[] { -1, -1 })
                 {
                     if(chart.MetaData["MusicStream"].Contains(".wav"))
                     {
@@ -213,7 +213,7 @@ namespace _3999_gen
             }
         }
 
-        private int[] TimestampToSeconds(Chart chart, int startTimestamp, int endTimestamp)
+        private float[] TimestampToSeconds(Chart chart, int startTimestamp, int endTimestamp)
         {
             int resolution = chart.ticksPerQuarterNote;
             int bpm = 0;
@@ -230,19 +230,19 @@ namespace _3999_gen
                     if(startTimestamp < bpmevent.timestamp && endTimestamp > bpmevent.timestamp)
                     {
                         shit = true;
-                        return new int[] { -1 , -1 };
+                        return new float[] { -1 , -1 };
                     }
 
-                    else if(!shit && bpmevent.timestamp < startTimestamp)
+                    else if(!shit && bpmevent.timestamp <= startTimestamp)
                     {
-                        bpm = bpmevent.BPM;
+                        bpm = bpmevent.BPM/1000;
                         tickStart = startTimestamp;
                         tickEnd = endTimestamp;
                     }
                 }
             }
 
-            int[] output = new int[] { tickStart / resolution * 60 / bpm, tickEnd / resolution * 60 / bpm };
+            float[] output = new float[] { tickStart / resolution * 60 / bpm, tickEnd / resolution * 60 / bpm };
 
             return output;
         }
@@ -1010,7 +1010,7 @@ namespace _3999_gen
 
         }
 
-        public void TrimWavFile(string inPath, string outPath, int cutFromStart, int cutFromEnd)
+        public void TrimWavFile(string inPath, string outPath, float cutFromStart, float cutFromEnd)
         {
             using (WaveFileReader reader = new WaveFileReader(inPath))
             {
@@ -1018,12 +1018,12 @@ namespace _3999_gen
                 {
                     int bytesPerMillisecond = reader.WaveFormat.AverageBytesPerSecond / 1000;
 
-                    int startPos = cutFromStart * 1000 * bytesPerMillisecond;
+                    float startPos = cutFromStart * 1000 * bytesPerMillisecond;
                     startPos = startPos - startPos % reader.WaveFormat.BlockAlign;
 
-                    int endBytes = cutFromEnd * 1000 * bytesPerMillisecond;
+                    float endBytes = cutFromEnd * 1000 * bytesPerMillisecond;
                     endBytes = endBytes - endBytes % reader.WaveFormat.BlockAlign;
-                    int endPos = (int)reader.Length - endBytes;
+                    float endPos = endBytes;
 
                     TrimWavFile(reader, writer, startPos, endPos);
                 }
@@ -1059,9 +1059,9 @@ namespace _3999_gen
             }
         }
 
-        private static void TrimWavFile(WaveFileReader reader, WaveFileWriter writer, int startPos, int endPos)
+        private static void TrimWavFile(WaveFileReader reader, WaveFileWriter writer, float startPos, float endPos)
         {
-            reader.Position = startPos;
+            reader.Position = (int)startPos;
             byte[] buffer = new byte[1024];
             while (reader.Position < endPos)
             {
