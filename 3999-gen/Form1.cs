@@ -700,10 +700,37 @@ namespace _3999_gen
             this.startSection = startSection;
             this.endSection = endSection;
 
+            foreach (NoteEvent note in Chart.ExpertData)
+            {
+                if (note.timestamp == startTimestamp)
+                {
+                    startIndex = note.NoteIndex;
+                }
+
+                else if (note.timestamp < endTimestamp)
+                {
+                    lastNote = note;
+                }
+            }
+
+            endIndex = lastNote.NoteIndex;
+
+            sectionLength = endIndex - startIndex;
+
+            iterations = numNotes / sectionLength;
+
+            nonoNotes = numNotes % sectionLength;
+
+            if (nonoNotes > 0)
+            {
+                iterations += 1;
+            }
+
             GenerateMetaData();
-            GenerateSyncData(1);
+            GenerateSyncData(iterations);
             GenerateEventData();
-            GenerateExpertChart(1);
+            GenerateExpertChart(iterations);
+            TrimChart();
 
             using (StreamWriter writer = File.CreateText(path + "\\notes-3999.chart"))
             {
@@ -807,32 +834,6 @@ namespace _3999_gen
         private void TrimChart()
         {
             bool check = false;
-
-            foreach(NoteEvent note in Chart.ExpertData)
-            {
-                if(note.timestamp == startTimestamp)
-                {
-                    startIndex = note.NoteIndex;
-                }
-
-                else if(note.timestamp < endTimestamp)
-                {
-                    lastNote = note;
-                }
-            }
-
-            endIndex = lastNote.NoteIndex;
-
-            sectionLength = endIndex - startIndex;
-
-            iterations = numNotes / sectionLength;
-
-            nonoNotes = numNotes % sectionLength;
-
-            if (nonoNotes > 0)
-            {
-                iterations += 1;
-            }
 
             cutoffTimestamp = int.Parse(timestamps[timestamps.Length-nonoNotes]);
 
