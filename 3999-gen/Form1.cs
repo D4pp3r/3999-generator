@@ -688,6 +688,8 @@ namespace _3999_gen
 
         private string[] timestamps;
 
+        private int cutoffTimestamp;
+
         public Chart Chart { get; private set; }
 
         public int numNotes { get; private set; }
@@ -701,6 +703,7 @@ namespace _3999_gen
             this.sectionLength = 0;
             this.iterations = 0;
             this.nonoNotes = 0;
+            this.cutoffTimestamp = 0;
         }
 
         public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path)
@@ -711,10 +714,37 @@ namespace _3999_gen
             this.startSection = startSection;
             this.endSection = endSection;
 
+            foreach (NoteEvent note in Chart.ExpertData)
+            {
+                if (note.timestamp == startTimestamp)
+                {
+                    startIndex = note.NoteIndex;
+                }
+
+                else if (note.timestamp < endTimestamp)
+                {
+                    lastNote = note;
+                }
+            }
+
+            endIndex = lastNote.NoteIndex;
+
+            sectionLength = endIndex - startIndex;
+
+            iterations = numNotes / sectionLength;
+
+            nonoNotes = numNotes % sectionLength;
+
+            if (nonoNotes > 0)
+            {
+                iterations += 1;
+            }
+
             GenerateMetaData();
-            GenerateSyncData();
+            GenerateSyncData(iterations);
             GenerateEventData();
-            GenerateExpertChart(1);
+            GenerateExpertChart(iterations);
+            TrimChart();
 
             using (StreamWriter writer = File.CreateText(path + "\\notes-3999.chart"))
             {
@@ -751,21 +781,24 @@ namespace _3999_gen
             output.Append("}");
         }
 
-        private void GenerateSyncData()
+        private void GenerateSyncData(int iterations)
         {
             output.Append("[SyncTrack]");
             output.Append("{");
 
-            foreach (SyncEvent chartevent in Chart.SyncData)
+            for (int i = 0; i < iterations; i++)
             {
-                if (chartevent.timestamp == 0)
+                foreach (SyncEvent chartevent in Chart.SyncData)
                 {
-                    output.Append("  0 = " + chartevent.RawData);
-                }
+                    if (chartevent.timestamp == 0)
+                    {
+                        output.Append("  " + (chartevent.timestamp + (iterations * (endTimestamp - startTimestamp))) + " = " + chartevent.RawData);
+                    }
 
-                else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
-                {
-                    output.Append("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
+                    else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    {
+                        output.Append("  " + (chartevent.timestamp - startTimestamp + (iterations * (endTimestamp - startTimestamp))) + " = " + chartevent.RawData);
+                    }
                 }
             }
 
@@ -816,33 +849,25 @@ namespace _3999_gen
         {
             bool check = false;
 
-            foreach(NoteEvent note in Chart.ExpertData)
+            cutoffTimestamp = int.Parse(timestamps[timestamps.Length-nonoNotes]);
+
+            for(int i = 0; i<output.Length; i++)
             {
-                if(note.timestamp == startTimestamp)
+                if(output[i] == "[ExpertSingle]")
                 {
-                    startIndex = note.NoteIndex;
+                    check = true;
                 }
 
-                else if(note.timestamp < endTimestamp)
+                else if(check && output[i] != "{" && output[i] != "}")
                 {
-                    lastNote = note;
+                    string[] subs = output[i].Trim().Split('=');
+
+                    if (check && int.Parse(subs[0].Trim()) > cutoffTimestamp)
+                    {
+                        output.SetValue(" ", i);
+                    }
                 }
             }
-
-            endIndex = lastNote.NoteIndex;
-
-            sectionLength = endIndex - startIndex;
-
-            iterations = numNotes / sectionLength;
-
-            nonoNotes = numNotes % sectionLength;
-
-            if (nonoNotes > 0)
-            {
-                iterations += 1;
-            }
-
-            
         }
     }
 
