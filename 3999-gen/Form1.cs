@@ -110,6 +110,29 @@ namespace _3999_gen
                 Application.Exit();
             }
         }
+
+        private void constructWav(string sourcePath, int iterations)
+        {
+            WaveFormat waveFormat = new WaveFormat(8000, 8, 2);
+            string outputPath = sourcePath.Substring(0, sourcePath.Length - 4) + "-3999.wav";
+
+            StreamReader inputStream = new StreamReader(sourcePath);
+            StreamWriter outputStream = new StreamWriter(outputPath);
+
+            using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new Mp3FileReader(inputStream.BaseStream)))
+            using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
+            {
+                byte[] bytes = new byte[waveStream.Length];
+                waveStream.Read(bytes, 0, (int)waveStream.Length);
+
+                for (int i = 0; i < iterations; i++)
+                {
+                    waveFileWriter.Write(bytes, 0, bytes.Length);
+                }
+
+                waveFileWriter.Flush();
+            }
+        }
     }
 
     public class TimestampedEvent
@@ -535,6 +558,46 @@ namespace _3999_gen
         }
     }
 
+    public static class WavFileUtils
+    {
+        public static void TrimWavFile(string inPath, string outPath, TimeSpan cutFromStart, TimeSpan cutFromEnd)
+        {
+            using (WaveFileReader reader = new WaveFileReader(inPath))
+            {
+                using (WaveFileWriter writer = new WaveFileWriter(outPath, reader.WaveFormat))
+                {
+                    int bytesPerMillisecond = reader.WaveFormat.AverageBytesPerSecond / 1000;
 
+                    int startPos = (int)cutFromStart.TotalMilliseconds * bytesPerMillisecond;
+                    startPos = startPos - startPos % reader.WaveFormat.BlockAlign;
+
+                    int endBytes = (int)cutFromEnd.TotalMilliseconds * bytesPerMillisecond;
+                    endBytes = endBytes - endBytes % reader.WaveFormat.BlockAlign;
+                    int endPos = (int)reader.Length - endBytes;
+
+                    TrimWavFile(reader, writer, startPos, endPos);
+                }
+            }
+        }
+
+        private static void TrimWavFile(WaveFileReader reader, WaveFileWriter writer, int startPos, int endPos)
+        {
+            reader.Position = startPos;
+            byte[] buffer = new byte[1024];
+            while (reader.Position < endPos)
+            {
+                int bytesRequired = (int)(endPos - reader.Position);
+                if (bytesRequired > 0)
+                {
+                    int bytesToRead = Math.Min(bytesRequired, buffer.Length);
+                    int bytesRead = reader.Read(buffer, 0, bytesToRead);
+                    if (bytesRead > 0)
+                    {
+                        writer.Write(buffer, 0, bytesRead);
+                    }
+                }
+            }
+        }
+    }
 
 }
