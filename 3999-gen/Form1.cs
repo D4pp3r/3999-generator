@@ -597,6 +597,22 @@ namespace _3999_gen
 
         private string endSection;
 
+        private int startIndex;
+
+        private int endIndex;
+
+        private NoteEvent lastNote;
+        
+        private int sectionLength;
+
+        private int iterations;
+
+        private int nonoNotes;
+
+        private int newNoteCount;
+
+        private string[] timestamps;
+
         public Chart Chart { get; private set; }
 
         public int numNotes { get; private set; }
@@ -604,6 +620,12 @@ namespace _3999_gen
         public ChartGenerator(Chart baseChart)
         {
             this.Chart = baseChart;
+            this.newNoteCount = 0;
+            this.startIndex = 0;
+            this.endIndex = 0;
+            this.sectionLength = 0;
+            this.iterations = 0;
+            this.nonoNotes = 0;
         }
 
         public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path)
@@ -617,7 +639,7 @@ namespace _3999_gen
             GenerateMetaData();
             GenerateSyncData();
             GenerateEventData();
-            GenerateExpertChart();
+            GenerateExpertChart(1);
 
             using (StreamWriter writer = File.CreateText(path + "\\notes-3999.chart"))
             {
@@ -691,20 +713,61 @@ namespace _3999_gen
             output.Append("}");
         }
 
-        private void GenerateExpertChart()
+        private void GenerateExpertChart(int iterations)
         {
             output.Append("[ExpertSingle]");
             output.Append("{");
 
-            foreach (ChartEvent chartevent in Chart.ExpertData)
+            for(int i = 0; i<iterations; i++)
             {
-                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                foreach (ChartEvent chartevent in Chart.ExpertData)
                 {
-                    output.Append("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
+                    if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    {
+                        output.Append("  " + (chartevent.timestamp - startTimestamp + (iterations*(endTimestamp-startTimestamp))) + " = " + chartevent.RawData);
+
+                        if (!timestamps.Contains((chartevent.timestamp - startTimestamp + (iterations * (endTimestamp - startTimestamp))).ToString()))
+                        {
+                            timestamps.Append((chartevent.timestamp - startTimestamp + (iterations * (endTimestamp - startTimestamp))).ToString());
+                        }
+                    }
                 }
             }
 
             output.Append("}");
+        }
+
+        private void TrimChart()
+        {
+            bool check = false;
+
+            foreach(NoteEvent note in Chart.ExpertData)
+            {
+                if(note.timestamp == startTimestamp)
+                {
+                    startIndex = note.NoteIndex;
+                }
+
+                else if(note.timestamp < endTimestamp)
+                {
+                    lastNote = note;
+                }
+            }
+
+            endIndex = lastNote.NoteIndex;
+
+            sectionLength = endIndex - startIndex;
+
+            iterations = numNotes / sectionLength;
+
+            nonoNotes = numNotes % sectionLength;
+
+            if (nonoNotes > 0)
+            {
+                iterations += 1;
+            }
+
+            
         }
     }
 
