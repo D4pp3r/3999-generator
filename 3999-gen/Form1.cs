@@ -185,6 +185,8 @@ namespace _3999_gen
             if (tickA == -1 || tickB == -1) return;
             ChartGenerator gen = new ChartGenerator(chart);
             gen.Generate(3999, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
+
+            //constructWav(chart.pathName + "\\..\\" + chart.MetaData["MusicStream"], 1);
         }
 
         private void constructWav(string sourcePath, int iterations)
@@ -688,7 +690,7 @@ namespace _3999_gen
 
         private int sectionLength;
 
-        private int iterations;
+        public int iterations { get; private set; }
 
         private int nonoNotes;
 
@@ -868,6 +870,18 @@ namespace _3999_gen
             }
 
             output.Add("}");
+        }
+    }
+
+    public class AudioConverter
+    {
+        public string SourcePath { get; private set; }
+
+        public string DestinationPath { get; private set; }
+
+        public AudioConverter(string sourcePath, string destPath)
+        {
+
         }
     }
 
