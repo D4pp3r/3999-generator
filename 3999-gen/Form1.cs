@@ -652,32 +652,12 @@ namespace _3999_gen
             {
                 if(chartevent.timestamp == 0)
                 {
-                    if(chartevent.eventType == "TS")
-                    {
-                        TSEvent ts = (TSEvent)chartevent;
-                        output.Append("  0 = TS " + ts.TSNum + " " + ts.TSDenom);
-                    }
-
-                    else if(chartevent.eventType == "B")
-                    {
-                        BPMEvent bpm = (BPMEvent)chartevent;
-                        output.Append("  0 = B " + bpm.BPM);
-                    }
+                    output.Append("  0 = " + chartevent.RawData);
                 }
 
                 else if(chartevent.timestamp > startTimestamp && chartevent.timestamp < endTimestamp)
                 {
-                    if (chartevent.eventType == "TS")
-                    {
-                        TSEvent ts = (TSEvent)chartevent;
-                        output.Append("  0 = TS " + ts.TSNum + " " + ts.TSDenom);
-                    }
-
-                    else if (chartevent.eventType == "B")
-                    {
-                        BPMEvent bpm = (BPMEvent)chartevent;
-                        output.Append("  0 = B " + bpm.BPM);
-                    }
+                    output.Append("  " + chartevent.timestamp + " = " + chartevent.RawData);
                 }
             }
         }
