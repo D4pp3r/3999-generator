@@ -10,6 +10,8 @@ using System.Windows.Forms;
 using System.IO;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using NVorbis;
+using NAudio.Vorbis;
 using System.Text.RegularExpressions;
 
 namespace _3999_gen
