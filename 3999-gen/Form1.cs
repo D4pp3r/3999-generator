@@ -24,6 +24,9 @@ namespace _3999_gen
         private string filePath;
         private Chart chart;
 
+        private int tickA;
+        private int tickB;
+
         public Form1()
         {
             InitializeComponent();
@@ -76,6 +79,7 @@ namespace _3999_gen
             {
                 if(globalEvent.eventType == "section")
                 {
+                    
                     SectionEvent sectionEvent = globalEvent as SectionEvent;
                     sectionLists.Add(sectionEvent.sectionName.Replace('_', ' ').Trim());
                 }
@@ -102,6 +106,20 @@ namespace _3999_gen
 
         private void cmboBoxSection_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (chart is null) return;
+            string curSection = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
+            foreach(GlobalEvent globalEvent in chart.EventsData)
+            {
+                if(globalEvent.eventType == "section")
+                {
+
+                }
+            }
+        }
+
+        private void cmboBoxSection2_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (chart is null) return;
 
         }
 
@@ -135,6 +153,8 @@ namespace _3999_gen
                 waveFileWriter.Flush();
             }
         }
+
+        
     }
 
     public class TimestampedEvent
@@ -142,10 +162,13 @@ namespace _3999_gen
         public int timestamp { get; private set; }
         public string SyncGlobalOrChartEvent { get; private set; }
 
-        public TimestampedEvent(int newTimestamp, string eventType)
+        public string RawData { get; private set;  }
+
+        public TimestampedEvent(int newTimestamp, string eventType, string newData)
         {
             this.timestamp = newTimestamp;
             this.SyncGlobalOrChartEvent = eventType;
+            this.RawData = newData;
         }
     }
 
@@ -153,7 +176,7 @@ namespace _3999_gen
     {
         public string eventType { get; private set; }
 
-        public SyncEvent(int newTimestamp, string newEventType) : base(newTimestamp, "Sync")
+        public SyncEvent(int newTimestamp, string newEventType, string newData) : base(newTimestamp, "Sync", newData)
         {
             this.eventType = newEventType;
         }
@@ -162,7 +185,7 @@ namespace _3999_gen
     public class BPMEvent : SyncEvent
     {
         public int BPM { get; private set; }
-        public BPMEvent(int newTimestamp, int newBPM) : base(newTimestamp, "B")
+        public BPMEvent(int newTimestamp, int newBPM, string newData) : base(newTimestamp, "B", newData)
         {
             this.BPM = newBPM;
         }
@@ -172,14 +195,14 @@ namespace _3999_gen
     {
         public int TSNum { get; private set; }
         public int TSDenom { get; private set; } // STORED AS LOG_2 OF THE ACTUAL TIME SIG DENOMINATOR
-        public TSEvent(int newTimestamp, int newTSNum, int newTSDenom) : base(newTimestamp, "TS")
+        public TSEvent(int newTimestamp, int newTSNum, int newTSDenom, string newData) : base(newTimestamp, "TS", newData)
         {
             this.TSNum = newTSNum;
             this.TSDenom = newTSDenom;
         }
 
         // No timestamp provided assumes denominator is 4 (2^2)
-        public TSEvent(int newTimestamp, int newTSNum) : this(newTimestamp, newTSNum, 2) { }
+        public TSEvent(int newTimestamp, int newTSNum, string newData) : this(newTimestamp, newTSNum, 2, newData) { }
 
     }
 
@@ -187,7 +210,7 @@ namespace _3999_gen
     {
         public string eventType { get; private set; }
 
-        public GlobalEvent(int newTimestamp, string newEventType) : base(newTimestamp, "Global")
+        public GlobalEvent(int newTimestamp, string newEventType, string newData) : base(newTimestamp, "Global", newData)
         {
             this.eventType = newEventType;
         }
@@ -196,7 +219,7 @@ namespace _3999_gen
     public class TextEvent : GlobalEvent
     {
         public string text { get; private set; }
-        public TextEvent(int newTimestamp, string newText) : base(newTimestamp, "text")
+        public TextEvent(int newTimestamp, string newText, string newData) : base(newTimestamp, "text", newData)
         {
             this.text = newText;
         }
@@ -205,7 +228,7 @@ namespace _3999_gen
     public class SectionEvent : GlobalEvent
     {
         public string sectionName { get; private set; }
-        public SectionEvent(int newTimestamp, string newSectionName) : base(newTimestamp, "section")
+        public SectionEvent(int newTimestamp, string newSectionName, string newData) : base(newTimestamp, "section", newData)
         {
             this.sectionName = newSectionName;
         }
@@ -214,7 +237,7 @@ namespace _3999_gen
     public class LyricEvent : GlobalEvent
     {
         public string lyric { get; private set; }
-        public LyricEvent(int newTimestamp, string newLyric) : base(newTimestamp, "lyric")
+        public LyricEvent(int newTimestamp, string newLyric, string newData) : base(newTimestamp, "lyric", newData)
         {
             this.lyric = newLyric;
         }
@@ -224,25 +247,10 @@ namespace _3999_gen
     {
         public string eventType { get; private set; }
 
-        public ChartEvent(int newTimestamp, string newEventType) : base(newTimestamp, "Chart")
+        public ChartEvent(int newTimestamp, string newEventType, string newData) : base(newTimestamp, "Chart", newData)
         {
             this.eventType = newEventType;
         }
-
-        /*public bool isTextEvent(string s)
-        {
-            return s.Split('=')[1].Split('\"').Length == 2;
-        }
-
-        public bool isSectionEvent(string s)
-        {
-            return s.Split('=')[1].Split('\"')[1].StartsWith("section");
-        }
-
-        public bool isLyricEvent(string s)
-        {
-            return s.Split('=')[1].Split('\"')[1].StartsWith("lyric");
-        }*/
     }
 
     public enum NoteEnum
@@ -266,7 +274,7 @@ namespace _3999_gen
 
         public int NoteIndex { get; private set; }
 
-        public NoteEvent(int timestamp, int newNoteValue, int newSustainLength, int noteIndex) : base(timestamp, "N")
+        public NoteEvent(int timestamp, int newNoteValue, int newSustainLength, int noteIndex, string newData) : base(timestamp, "N", newData)
         {
             this.NoteValue = newNoteValue;
             this.SustainLength = newSustainLength;
@@ -281,7 +289,7 @@ namespace _3999_gen
         public int SpecialValue { get; private set; }
         public int EventLength { get; private set; }
 
-        public SpecialEvent(int timestamp, int newSpecialValue, int newEventLength) : base(timestamp, "S")
+        public SpecialEvent(int timestamp, int newSpecialValue, int newEventLength, string newData) : base(timestamp, "S", newData)
         {
             this.SpecialValue = newSpecialValue;
             this.EventLength = newEventLength;
@@ -292,7 +300,7 @@ namespace _3999_gen
     {
         public string EventName { get; private set; }
 
-        public TrackEvent(int timestamp, string newEventName) : base(timestamp, "E")
+        public TrackEvent(int timestamp, string newEventName, string newData) : base(timestamp, "E", newData)
         {
             this.EventName = newEventName;
         }
@@ -460,13 +468,13 @@ namespace _3999_gen
                         {
                             case 'B':
                                 int BPM = Int32.Parse(RHS[1]);
-                                SyncData.Add(new BPMEvent(timestamp, BPM));
+                                SyncData.Add(new BPMEvent(timestamp, BPM, RHS[1]));
                                 break;
                             case 'T':
                                 bool is4_4 = RHS.Length == 2;
                                 int numerator = Int32.Parse(RHS[1].Trim());
                                 int denom = is4_4 ? 2 : Int32.Parse(RHS[2].Trim()); // we're storing Log_2
-                                SyncData.Add(new TSEvent(timestamp, numerator, denom));
+                                SyncData.Add(new TSEvent(timestamp, numerator, denom, RHS[1]));
                                 break;
                             case 'A':
                                 // ignore anchor events
@@ -480,23 +488,23 @@ namespace _3999_gen
                 case 2:
                     for (int i = 0; i <= endLine - startLine; i++)
                     {
-                        string curLine = lines[startLine + i];
+                        string curLine = Form1.StripHTML(lines[startLine + i]);
                         int timestamp = Int32.Parse(curLine.Trim().Split('=')[0]);
                         // this mess of logic basically checks the first letter (whether it's N, S, or E)
                         string curEvent = curLine.Split('=')[1].Trim().Split('\"')[1];
                         if (curEvent.StartsWith("lyric "))
                         {
                             string lyric = curEvent.Substring("lyric ".Length);
-                            EventsData.Add(new LyricEvent(timestamp, lyric));
+                            EventsData.Add(new LyricEvent(timestamp, lyric, curLine.Split('=')[1].Trim()));
                         }
                         else if (curEvent.StartsWith("section "))
                         {
-                            string section = curEvent.Substring("section ".Length);
-                            EventsData.Add(new SectionEvent(timestamp, section));
+                            string section = curEvent.Substring("section ".Length).Trim();
+                            EventsData.Add(new SectionEvent(timestamp, section,curLine.Split('=')[1].Trim()));
                         }
                         else
                         {
-                            EventsData.Add(new TextEvent(timestamp, curEvent));
+                            EventsData.Add(new TextEvent(timestamp, curEvent, curLine.Split('=')[1].Trim()));
                         }
                     }
                     return;
@@ -522,19 +530,19 @@ namespace _3999_gen
                                 {
                                     this.numNotes = 1;
                                 }
-                                ExpertData.Add(new NoteEvent(timestamp, noteval, susval, this.numNotes-1));
+                                ExpertData.Add(new NoteEvent(timestamp, noteval, susval, this.numNotes-1, curLine.Split('=')[1].Trim()));
 
                                 continue;
 
                             case 'S':
                                 int specval = Int32.Parse(RHS[1]);
                                 int speclen = Int32.Parse(RHS[2]);
-                                ExpertData.Add(new SpecialEvent(timestamp, specval, speclen));
+                                ExpertData.Add(new SpecialEvent(timestamp, specval, speclen, curLine.Split('=')[1].Trim()));
 
                                 continue;
 
                             case 'E':
-                                ExpertData.Add(new TrackEvent(timestamp, RHS[1]));
+                                ExpertData.Add(new TrackEvent(timestamp, RHS[1], curLine.Split('=')[1].Trim()));
 
                                 continue;
 
