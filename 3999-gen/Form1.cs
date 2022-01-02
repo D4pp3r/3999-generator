@@ -16,7 +16,7 @@ using System.Text.RegularExpressions;
 
 namespace _3999_gen
 {
-    
+
 
     public partial class Form1 : Form
     {
@@ -113,10 +113,10 @@ namespace _3999_gen
             int index = cmboBoxSection.SelectedIndex;
             foreach (GlobalEvent g in chart.EventsData)
             {
-                if(g.eventType == "section")
+                if (g.eventType == "section")
                 {
                     SectionEvent section = g as SectionEvent;
-                    if(index == section.sectionIndex)
+                    if (index == section.sectionIndex)
                     {
                         tickA = section.timestamp;
                     }
@@ -132,7 +132,7 @@ namespace _3999_gen
             bool tickFlag = false;
 
             int index = cmboBoxSection2.SelectedIndex;
-            if(index == cmboBoxSection2.Items.Count)
+            if (index == cmboBoxSection2.Items.Count-1)
             {
                 tickB = chart.lastTimeStamp;
             }
@@ -145,7 +145,7 @@ namespace _3999_gen
                     SectionEvent section = globalEvent as SectionEvent;
                     if (tickFlag)
                     {
-                        tickB = section.timestamp - 1;
+                        tickB = section.timestamp;
                         break;
                     }
                     if (index == section.sectionIndex)
@@ -155,27 +155,36 @@ namespace _3999_gen
 
                 }
             }
-           
+
         }
 
         void Form1_KeyPress(object sender, KeyPressEventArgs e)
         {
             funnycode.Enqueue(e.KeyChar);
             string curstring = new string(funnycode.ToArray());
-            if (curstring == "oboyoboy")
+            if (curstring == "oboyoboy" || curstring == "54535453")
             {
-                if(MessageBox.Show("Hyperspeed Unlocked!") == DialogResult.OK)
+                if (MessageBox.Show("Hyperspeed Unlocked!") == DialogResult.OK)
                 {
                     Application.Exit();
                 }
             }
-            
+            else if(curstring == "borm tim")
+            {
+                if (MessageBox.Show("Buy Bormo time guitars from BormoTime.com") == DialogResult.OK)
+                {
+                    Application.Exit();
+                }
+            }
+
         }
         private void btnGenerate_Click(object sender, EventArgs e)
         {
             if (chart is null) return;
             if (tickA == -1 || tickB == -1) return;
             ChartGenerator gen = new ChartGenerator(chart);
+
+            gen.Generate(3999, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
 
         }
 
@@ -643,16 +652,20 @@ namespace _3999_gen
             NoteEvent note = null;
             foreach (ChartEvent e in eventList)
             {
+                int ts = e.timestamp;
+
                 if (e.eventType == "N")
                 {
-                    note = e as NoteEvent;
-                    if (timestamp >= note.timestamp)
+                    
+                    if (timestamp > ts)
                     {
                         break;
                     }
+                    note = e as NoteEvent;
+                    ts = note.timestamp;
                 }
             }
-            if (note is null) ErrorMessageAndClose(new Exception("no next note"), "there was no next note, to the pokey with you");
+            //if (note is null) ErrorMessageAndClose(new Exception("no next note"), "there was no next note, to the pokey with you");
             return note;
         }
 
@@ -662,7 +675,7 @@ namespace _3999_gen
 
     public class ChartGenerator
     {
-        private string[] output;
+        private List<string> output;
 
         private int startTimestamp;
 
@@ -677,7 +690,7 @@ namespace _3999_gen
         private int endIndex;
 
         private NoteEvent lastNote;
-        
+
         private int sectionLength;
 
         private int iterations;
@@ -686,7 +699,7 @@ namespace _3999_gen
 
         private int newNoteCount;
 
-        private string[] timestamps;
+        private List<string> timestamps;
 
         private int cutoffTimestamp;
 
@@ -704,6 +717,8 @@ namespace _3999_gen
             this.iterations = 0;
             this.nonoNotes = 0;
             this.cutoffTimestamp = 0;
+            this.output = new List<string>();
+            this.timestamps = new List<string>();
         }
 
         public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path)
@@ -714,31 +729,54 @@ namespace _3999_gen
             this.startSection = startSection;
             this.endSection = endSection;
 
-            foreach (NoteEvent note in Chart.ExpertData)
+            foreach (ChartEvent chartEvent in Chart.ExpertData)
             {
-                if (note.timestamp == startTimestamp)
+                if (chartEvent.eventType == "N")
                 {
-                    startIndex = note.NoteIndex;
-                }
+                    NoteEvent note = chartEvent as NoteEvent;
+                    if (note.timestamp == startTimestamp)
+                    {
+                        startIndex = note.NoteIndex;
+                    }
 
-                else if (note.timestamp < endTimestamp)
-                {
-                    lastNote = note;
+                    else if (note.timestamp <= endTimestamp)
+                    {
+                        lastNote = note;
+                    }
                 }
             }
 
-            endIndex = lastNote.NoteIndex;
+            if(lastNote is null)
+            {
+                NoteEvent tempNote = Chart.GetNextNote(startTimestamp, Chart.ExpertData);
+                while (tempNote != null)
+                {
+                    //MessageBox.Show(tempNote.timestamp.ToString());
+                    endIndex = tempNote.NoteIndex;
+                    tempNote = Chart.GetNextNote(tempNote.timestamp, Chart.ExpertData);
+                    
+                }
+                
+                
+                
+            }
+            else
+            {
+                endIndex = lastNote.NoteIndex;
+            }
 
-            sectionLength = endIndex - startIndex;
+            sectionLength = endIndex - startIndex + 1;
 
             iterations = numNotes / sectionLength;
 
-            nonoNotes = numNotes % sectionLength;
+            
 
-            if (nonoNotes > 0)
+            if (numNotes % sectionLength != 0)
             {
                 iterations += 1;
             }
+
+            nonoNotes = (sectionLength * iterations) - numNotes;
 
             GenerateMetaData();
             GenerateSyncData(iterations);
@@ -757,34 +795,41 @@ namespace _3999_gen
 
         private void GenerateMetaData()
         {
-            output.Append("[Song]");
-            output.Append("{");
+            output.Add("[Song]");
+            output.Add("{");
 
             foreach (string key in Chart.MetaData.Keys)
             {
                 if (key == "Name")
                 {
-                    output.Append("  " + key + " = \"" + Chart.MetaData[key] + " - " + startSection + " to " + endSection + " " + numNotes + "\"");
+                    output.Add("  " + key + " = \"" + Chart.chartName + " - " + startSection + " to " + endSection + " " + numNotes + "\"");
                 }
-
-                else if (key == "Artist" || key == "Charter" || key == "Album" || key == "Year" || key == "Genre" || key == "MediaType" || key == "MusicStream")
+                else if (key == "Artist")
                 {
-                    output.Append("  " + key + " = \"" + Chart.MetaData[key] + "\"");
+                    output.Add("  " + key + " = \"" + Chart.chartArtist + "\"");
+                }
+                else if(key == "Charter")
+                {
+                    output.Add("  " + key + " = \"" + Chart.charter + "\"");
+                }
+                else if (key == "Album" || key == "Year" || key == "Genre" || key == "MediaType" || key == "MusicStream")
+                {
+                    output.Add("  " + key + " = \"" + Chart.MetaData[key] + "\"");
                 }
 
                 else
                 {
-                    output.Append("  " + key + " = " + Chart.MetaData[key]);
+                    output.Add("  " + key + " = " + Chart.MetaData[key]);
                 }
             }
 
-            output.Append("}");
+            output.Add("}");
         }
 
         private void GenerateSyncData(int iterations)
         {
-            output.Append("[SyncTrack]");
-            output.Append("{");
+            output.Add("[SyncTrack]");
+            output.Add("{");
 
             for (int i = 0; i < iterations; i++)
             {
@@ -792,82 +837,86 @@ namespace _3999_gen
                 {
                     if (chartevent.timestamp == 0)
                     {
-                        output.Append("  " + (chartevent.timestamp + (iterations * (endTimestamp - startTimestamp))) + " = " + chartevent.RawData);
+                        output.Add("  " + (chartevent.timestamp + (i * (endTimestamp - startTimestamp + (Chart.ticksPerQuarterNote / 4)))) + " = " + chartevent.RawData);
                     }
 
-                    else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp < endTimestamp)
                     {
-                        output.Append("  " + (chartevent.timestamp - startTimestamp + (iterations * (endTimestamp - startTimestamp))) + " = " + chartevent.RawData);
+                        output.Add("  " + (chartevent.timestamp - startTimestamp + ( i * (endTimestamp - startTimestamp + (Chart.ticksPerQuarterNote / 4)))) + " = " + chartevent.RawData);
                     }
                 }
             }
 
-            output.Append("}");
+            output.Add("}");
         }
 
         private void GenerateEventData()
         {
-            output.Append("[Events]");
-            output.Append("{");
+            output.Add("[Events]");
+            output.Add("{");
 
             foreach (GlobalEvent chartevent in Chart.EventsData)
             {
-                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp < endTimestamp)
                 {
-                    output.Append("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
+                    output.Add("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
                 }
             }
 
-            output.Append("}");
+            output.Add("}");
         }
 
         private void GenerateExpertChart(int iterations)
         {
-            output.Append("[ExpertSingle]");
-            output.Append("{");
-
-            for(int i = 0; i<iterations; i++)
+            output.Add("[ExpertSingle]");
+            output.Add("{");
+            for (int i = 0; i < iterations; i++)
             {
+                
                 foreach (ChartEvent chartevent in Chart.ExpertData)
                 {
-                    if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    if (chartevent.timestamp >= startTimestamp && chartevent.timestamp < endTimestamp)
                     {
-                        output.Append("  " + (chartevent.timestamp - startTimestamp + (iterations*(endTimestamp-startTimestamp))) + " = " + chartevent.RawData);
+                        output.Add("  " + (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp + (Chart.ticksPerQuarterNote / 4)))) + " = " + chartevent.RawData);
 
-                        if (!timestamps.Contains((chartevent.timestamp - startTimestamp + (iterations * (endTimestamp - startTimestamp))).ToString()))
+                        if (!timestamps.Contains((chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp + (Chart.ticksPerQuarterNote / 4)))).ToString()))
                         {
-                            timestamps.Append((chartevent.timestamp - startTimestamp + (iterations * (endTimestamp - startTimestamp))).ToString());
+                            int newTimestamp = (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp + (Chart.ticksPerQuarterNote / 4))));
+                            string timestampString = newTimestamp.ToString();
+                            timestamps.Add(timestampString);
+                            newNoteCount++;
                         }
                     }
                 }
             }
-
-            output.Append("}");
+            output.Add("}");
         }
 
         private void TrimChart()
         {
             bool check = false;
 
-            cutoffTimestamp = int.Parse(timestamps[timestamps.Length-nonoNotes]);
+            cutoffTimestamp = int.Parse(timestamps[timestamps.Count - nonoNotes]);
 
-            for(int i = 0; i<output.Length; i++)
+            for (int i = 0; i < output.Count; i++)
             {
-                if(output[i] == "[ExpertSingle]")
+                if (output[i] == "[ExpertSingle]")
                 {
                     check = true;
                 }
 
-                else if(check && output[i] != "{" && output[i] != "}")
+                else if (check && output[i] != "{" && output[i] != "}")
                 {
                     string[] subs = output[i].Trim().Split('=');
 
-                    if (check && int.Parse(subs[0].Trim()) > cutoffTimestamp)
+                    if (check && int.Parse(subs[0].Trim()) >= cutoffTimestamp)
                     {
-                        output.SetValue(" ", i);
+                        output.RemoveRange(i, output.Count - i-1);
+                        break;
                     }
                 }
             }
+            output.Add("}");
         }
     }
 
