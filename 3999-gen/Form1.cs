@@ -297,6 +297,7 @@ namespace _3999_gen
             this.EventName = newEventName;
         }
     }
+
     public class Chart
     {
         public int numNotes { get; private set; }
@@ -560,9 +561,17 @@ namespace _3999_gen
         }
     }
 
-    public static class WavFileUtils
+    public class ChartGenerator
     {
-        public static void TrimWavFile(string inPath, string outPath, TimeSpan cutFromStart, TimeSpan cutFromEnd)
+        public ChartGenerator(Chart baseChart, int numNotes, string startSection, string endSection)
+        {
+
+        }
+    }
+
+    public class WavFileUtils
+    {
+        public static void TrimWavFile(string inPath, string outPath, int cutFromStart, int cutFromEnd)
         {
             using (WaveFileReader reader = new WaveFileReader(inPath))
             {
@@ -570,10 +579,10 @@ namespace _3999_gen
                 {
                     int bytesPerMillisecond = reader.WaveFormat.AverageBytesPerSecond / 1000;
 
-                    int startPos = (int)cutFromStart.TotalMilliseconds * bytesPerMillisecond;
+                    int startPos = cutFromStart * 1000 * bytesPerMillisecond;
                     startPos = startPos - startPos % reader.WaveFormat.BlockAlign;
 
-                    int endBytes = (int)cutFromEnd.TotalMilliseconds * bytesPerMillisecond;
+                    int endBytes = cutFromEnd * 1000 * bytesPerMillisecond;
                     endBytes = endBytes - endBytes % reader.WaveFormat.BlockAlign;
                     int endPos = (int)reader.Length - endBytes;
 
