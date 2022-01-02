@@ -203,6 +203,7 @@
             this.cmboBoxSection2.Size = new System.Drawing.Size(121, 21);
             this.cmboBoxSection2.TabIndex = 14;
             this.cmboBoxSection2.Text = "End Section";
+            this.cmboBoxSection2.SelectedIndexChanged += new System.EventHandler(this.cmboBoxSection2_SelectedIndexChanged);
             // 
             // label2
             // 
