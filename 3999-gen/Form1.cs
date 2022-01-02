@@ -577,44 +577,39 @@ namespace _3999_gen
 
         private int endTimestamp;
 
+        private string startSection;
+
+        private string endSection;
+
         public Chart Chart { get; private set; }
 
         public int numNotes { get; private set; }
-
-        public string startSection { get; private set; }
-
-        public string endSection { get; private set; }
 
         public ChartGenerator(Chart baseChart)
         {
             this.Chart = baseChart;
         }
 
-        public void Generate(int numNotes, string startSection, string endSection)
+        public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path)
         {
             this.numNotes = numNotes;
+            this.startTimestamp = startTimestamp;
+            this.endTimestamp = endTimestamp;
             this.startSection = startSection;
             this.endSection = endSection;
 
-            foreach(GlobalEvent chartevent in Chart.EventsData)
+            GenerateMetaData();
+            GenerateSyncData();
+            GenerateEventData();
+            GenerateExpertChart();
+
+            using (StreamWriter writer = File.CreateText(path + "\\notes-3999.chart"))
             {
-                if(chartevent.eventType == "section")
+                foreach(string line in output)
                 {
-                    SectionEvent sectionevent = (SectionEvent)chartevent;
-
-                    if(sectionevent.sectionName == startSection)
-                    {
-                        startTimestamp = sectionevent.timestamp;
-                    }
-
-                    else if(sectionevent.sectionName == endSection)
-                    {
-                        endTimestamp = sectionevent.timestamp;
-                    }
+                    writer.WriteLine(line);
                 }
             }
-
-            GenerateMetaData();
         }
 
         private void GenerateMetaData()
@@ -655,11 +650,45 @@ namespace _3999_gen
                     output.Append("  0 = " + chartevent.RawData);
                 }
 
-                else if(chartevent.timestamp > startTimestamp && chartevent.timestamp < endTimestamp)
+                else if(chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
                 {
-                    output.Append("  " + chartevent.timestamp + " = " + chartevent.RawData);
+                    output.Append("  " + (chartevent.timestamp-startTimestamp) + " = " + chartevent.RawData);
                 }
             }
+
+            output.Append("}");
+        }
+
+        private void GenerateEventData()
+        {
+            output.Append("[Events]");
+            output.Append("{");
+
+            foreach(GlobalEvent chartevent in Chart.EventsData)
+            {
+                if(chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                {
+                    output.Append("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
+                }
+            }
+
+            output.Append("}");
+        }
+
+        private void GenerateExpertChart()
+        {
+            output.Append("[ExpertSingle]");
+            output.Append("{");
+
+            foreach (ChartEvent chartevent in Chart.ExpertData)
+            {
+                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                {
+                    output.Append("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
+                }
+            }
+
+            output.Append("}");
         }
     }
 
