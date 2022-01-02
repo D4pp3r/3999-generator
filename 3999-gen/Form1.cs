@@ -106,6 +106,29 @@ namespace _3999_gen
         {
 
         }
+
+        private void constructWav(string sourcePath, int iterations)
+        {
+            WaveFormat waveFormat = new WaveFormat(8000, 8, 2);
+            string outputPath = sourcePath.Substring(0, sourcePath.Length - 4) + "-3999.wav";
+
+            StreamReader inputStream = new StreamReader(sourcePath);
+            StreamWriter outputStream = new StreamWriter(outputPath);
+
+            using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new Mp3FileReader(inputStream.BaseStream)))
+            using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
+            {
+                byte[] bytes = new byte[waveStream.Length];
+                waveStream.Read(bytes, 0, (int)waveStream.Length);
+
+                for (int i = 0; i < iterations; i++)
+                {
+                    waveFileWriter.Write(bytes, 0, bytes.Length);
+                }
+
+                waveFileWriter.Flush();
+            }
+        }
     }
 
     public class TimestampedEvent
