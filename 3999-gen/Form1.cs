@@ -108,11 +108,15 @@ namespace _3999_gen
         {
             if (chart is null) return;
             string curSection = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
-            foreach(GlobalEvent globalEvent in chart.EventsData)
+            foreach (GlobalEvent globalEvent in chart.EventsData)
             {
-                if(globalEvent.eventType == "section")
+                if (globalEvent.eventType == "section")
                 {
-
+                    SectionEvent section = globalEvent as SectionEvent;
+                    if (curSection == section.sectionName)
+                    {
+                        tickA = section.timestamp;
+                    }
                 }
             }
         }
@@ -120,8 +124,20 @@ namespace _3999_gen
         private void cmboBoxSection2_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (chart is null) return;
-
+            string curSection = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
+            foreach (GlobalEvent globalEvent in chart.EventsData)
+            {
+                if (globalEvent.eventType == "section")
+                {
+                    SectionEvent section = globalEvent as SectionEvent;
+                    if (curSection == section.sectionName)
+                    {
+                        tickB = section.timestamp;
+                    }
+                }
+            }
         }
+
 
         private void btnGenerate_Click(object sender, EventArgs e)
         {
