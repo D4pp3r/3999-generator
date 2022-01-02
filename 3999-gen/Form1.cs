@@ -59,7 +59,7 @@ namespace _3999_gen
         {
             chart = new Chart(filePath);
             lblSong.Text = chart.chartName.Replace("&", "&&") + " by " + chart.chartArtist.Replace("&", "&&") + " (Charted by: " + chart.charter.Replace("&", "&&") + ")";
-           
+
             InitComboBoxes();
         }
 
@@ -75,16 +75,16 @@ namespace _3999_gen
             Font font = cmboBoxSection.Font;
             SizeF stringSize = new SizeF();
             List<string> sectionLists = new List<string>();
-            foreach(GlobalEvent globalEvent in chart.EventsData)
+            foreach (GlobalEvent globalEvent in chart.EventsData)
             {
-                if(globalEvent.eventType == "section")
+                if (globalEvent.eventType == "section")
                 {
-                    
+
                     SectionEvent sectionEvent = globalEvent as SectionEvent;
                     sectionLists.Add(sectionEvent.sectionName.Replace('_', ' ').Trim());
                 }
             }
-            if(sectionLists.Count == 0) return;
+            if (sectionLists.Count == 0) return;
             foreach (string section in sectionLists)
             {
                 string curSection = StripHTML(i.ToString() + ": " + section);
@@ -108,12 +108,13 @@ namespace _3999_gen
         {
             if (chart is null) return;
             string curSection = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
-            foreach (GlobalEvent globalEvent in chart.EventsData)
+            int index = cmboBoxSection.SelectedIndex;
+            foreach (GlobalEvent g in chart.EventsData)
             {
-                if (globalEvent.eventType == "section")
+                if(g.eventType == "section")
                 {
-                    SectionEvent section = globalEvent as SectionEvent;
-                    if (curSection == section.sectionName)
+                    SectionEvent section = g as SectionEvent;
+                    if(index == section.sectionIndex)
                     {
                         tickA = section.timestamp;
                     }
@@ -125,23 +126,40 @@ namespace _3999_gen
         {
             if (chart is null) return;
             string curSection = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
+
+            bool tickFlag = false;
+
+            int index = cmboBoxSection2.SelectedIndex;
+            if(index == cmboBoxSection2.Items.Count)
+            {
+                tickB = chart.lastTimeStamp;
+            }
+
             foreach (GlobalEvent globalEvent in chart.EventsData)
             {
+
                 if (globalEvent.eventType == "section")
                 {
                     SectionEvent section = globalEvent as SectionEvent;
-                    if (curSection == section.sectionName)
+                    if (tickFlag)
                     {
-                        tickB = section.timestamp;
+                        tickB = section.timestamp - 1;
+                        break;
                     }
+                    if (index == section.sectionIndex)
+                    {
+                        tickFlag = true;
+                    }
+
                 }
             }
+           
         }
 
 
         private void btnGenerate_Click(object sender, EventArgs e)
         {
-            if(!(chart is null) && MessageBox.Show("Skill Issue") == DialogResult.OK)
+            if (!(chart is null) && MessageBox.Show("Skill Issue") == DialogResult.OK)
             {
                 Application.Exit();
             }
@@ -170,7 +188,7 @@ namespace _3999_gen
             }
         }
 
-        
+
     }
 
     public class TimestampedEvent
@@ -178,7 +196,7 @@ namespace _3999_gen
         public int timestamp { get; private set; }
         public string SyncGlobalOrChartEvent { get; private set; }
 
-        public string RawData { get; private set;  }
+        public string RawData { get; private set; }
 
         public TimestampedEvent(int newTimestamp, string eventType, string newData)
         {
@@ -244,9 +262,11 @@ namespace _3999_gen
     public class SectionEvent : GlobalEvent
     {
         public string sectionName { get; private set; }
-        public SectionEvent(int newTimestamp, string newSectionName, string newData) : base(newTimestamp, "section", newData)
+        public int sectionIndex { get; private set; }
+        public SectionEvent(int newTimestamp, string newSectionName, int newSectionIndex, string newData) : base(newTimestamp, "section", newData)
         {
             this.sectionName = newSectionName;
+            this.sectionIndex = newSectionIndex;
         }
     }
 
@@ -325,8 +345,12 @@ namespace _3999_gen
     public class Chart
     {
         public int numNotes { get; private set; }
+
+        public int numSections { get; private set; }
         public int numSyncEvents { get; private set; }
         public int ticksPerQuarterNote { get; private set; }
+
+        public int lastTimeStamp { get; private set; }
 
         private string[] lines;
 
@@ -354,6 +378,8 @@ namespace _3999_gen
 
         public Chart(string filename)
         {
+            lastTimeStamp = -1;
+            numSections = 0;
             this.pathName = filename;
             try
             {
@@ -381,7 +407,7 @@ namespace _3999_gen
                     if (!(chartName is null || chartArtist is null || charter is null)) break;
                 }
 
-                if(charter is null && !(frets is null))
+                if (charter is null && !(frets is null))
                 {
                     charter = frets; // add support for CH defaulting to frets if charter doesn't exist
                 }
@@ -478,6 +504,10 @@ namespace _3999_gen
                         this.numSyncEvents++;
                         string curLine = lines[startLine + i];
                         int timestamp = Int32.Parse(curLine.Trim().Split('=')[0]);
+                        if (timestamp >= lastTimeStamp)
+                        {
+                            lastTimeStamp = timestamp;
+                        }
                         // this mess of logic basically checks the first letter (whether it's B, T, or A)
                         string[] RHS = curLine.Split('=')[1].Trim().Split(' ');
                         switch (RHS[0].ToCharArray()[0])
@@ -506,6 +536,10 @@ namespace _3999_gen
                     {
                         string curLine = Form1.StripHTML(lines[startLine + i]);
                         int timestamp = Int32.Parse(curLine.Trim().Split('=')[0]);
+                        if (timestamp >= lastTimeStamp)
+                        {
+                            lastTimeStamp = timestamp;
+                        }
                         // this mess of logic basically checks the first letter (whether it's N, S, or E)
                         string curEvent = curLine.Split('=')[1].Trim().Split('\"')[1];
                         if (curEvent.StartsWith("lyric "))
@@ -516,7 +550,8 @@ namespace _3999_gen
                         else if (curEvent.StartsWith("section "))
                         {
                             string section = curEvent.Substring("section ".Length).Trim();
-                            EventsData.Add(new SectionEvent(timestamp, section,curLine.Split('=')[1].Trim()));
+                            EventsData.Add(new SectionEvent(timestamp, section, numSections, curLine.Split('=')[1].Trim()));
+                            numSections++;
                         }
                         else
                         {
@@ -529,11 +564,16 @@ namespace _3999_gen
                     {
                         string curLine = lines[startLine + i];
                         int timestamp = Int32.Parse(curLine.Trim().Split('=')[0]);
+                        if (timestamp >= lastTimeStamp)
+                        {
+                            lastTimeStamp = timestamp;
+                        }
                         string[] RHS = curLine.Split('=')[1].Trim().Split(' ');
                         switch (RHS[0].ToCharArray()[0])
                         {
                             case 'N':
                                 int noteval = Int32.Parse(RHS[1]);
+                                // when the imposter is SUS am i right???
                                 int susval = Int32.Parse(RHS[2]);
                                 if (ExpertData.Count != 0)
                                 {
@@ -546,7 +586,7 @@ namespace _3999_gen
                                 {
                                     this.numNotes = 1;
                                 }
-                                ExpertData.Add(new NoteEvent(timestamp, noteval, susval, this.numNotes-1, curLine.Split('=')[1].Trim()));
+                                ExpertData.Add(new NoteEvent(timestamp, noteval, susval, this.numNotes - 1, curLine.Split('=')[1].Trim()));
 
                                 continue;
 
@@ -583,6 +623,27 @@ namespace _3999_gen
                 default: return;
             }
         }
+
+        public NoteEvent GetNextNote(int timestamp, List<ChartEvent> eventList)
+        {
+            NoteEvent note = null;
+            foreach (ChartEvent e in eventList)
+            {
+                if (e.eventType == "N")
+                {
+                    note = e as NoteEvent;
+                    if (timestamp >= note.timestamp)
+                    {
+                        break;
+                    }
+                }
+            }
+            if (note is null) ErrorMessageAndClose(new Exception("no next note"), "there was no next note, to the pokey with you");
+            return note;
+        }
+
+
+
     }
 
     public class ChartGenerator
@@ -643,7 +704,7 @@ namespace _3999_gen
 
             using (StreamWriter writer = File.CreateText(path + "\\notes-3999.chart"))
             {
-                foreach(string line in output)
+                foreach (string line in output)
                 {
                     writer.WriteLine(line);
                 }
@@ -681,16 +742,16 @@ namespace _3999_gen
             output.Append("[SyncTrack]");
             output.Append("{");
 
-            foreach(SyncEvent chartevent in Chart.SyncData)
+            foreach (SyncEvent chartevent in Chart.SyncData)
             {
-                if(chartevent.timestamp == 0)
+                if (chartevent.timestamp == 0)
                 {
                     output.Append("  0 = " + chartevent.RawData);
                 }
 
-                else if(chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
                 {
-                    output.Append("  " + (chartevent.timestamp-startTimestamp) + " = " + chartevent.RawData);
+                    output.Append("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
                 }
             }
 
@@ -702,9 +763,9 @@ namespace _3999_gen
             output.Append("[Events]");
             output.Append("{");
 
-            foreach(GlobalEvent chartevent in Chart.EventsData)
+            foreach (GlobalEvent chartevent in Chart.EventsData)
             {
-                if(chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
                 {
                     output.Append("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
                 }
