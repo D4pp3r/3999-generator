@@ -674,6 +674,8 @@ namespace _3999_gen
 
         private string[] timestamps;
 
+        private int cutoffTimestamp;
+
         public Chart Chart { get; private set; }
 
         public int numNotes { get; private set; }
@@ -687,6 +689,7 @@ namespace _3999_gen
             this.sectionLength = 0;
             this.iterations = 0;
             this.nonoNotes = 0;
+            this.cutoffTimestamp = 0;
         }
 
         public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path)
@@ -698,7 +701,7 @@ namespace _3999_gen
             this.endSection = endSection;
 
             GenerateMetaData();
-            GenerateSyncData();
+            GenerateSyncData(1);
             GenerateEventData();
             GenerateExpertChart(1);
 
@@ -737,21 +740,24 @@ namespace _3999_gen
             output.Append("}");
         }
 
-        private void GenerateSyncData()
+        private void GenerateSyncData(int iterations)
         {
             output.Append("[SyncTrack]");
             output.Append("{");
 
-            foreach (SyncEvent chartevent in Chart.SyncData)
+            for (int i = 0; i < iterations; i++)
             {
-                if (chartevent.timestamp == 0)
+                foreach (SyncEvent chartevent in Chart.SyncData)
                 {
-                    output.Append("  0 = " + chartevent.RawData);
-                }
+                    if (chartevent.timestamp == 0)
+                    {
+                        output.Append("  " + (chartevent.timestamp + (iterations * (endTimestamp - startTimestamp))) + " = " + chartevent.RawData);
+                    }
 
-                else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
-                {
-                    output.Append("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
+                    else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    {
+                        output.Append("  " + (chartevent.timestamp - startTimestamp + (iterations * (endTimestamp - startTimestamp))) + " = " + chartevent.RawData);
+                    }
                 }
             }
 
@@ -828,7 +834,25 @@ namespace _3999_gen
                 iterations += 1;
             }
 
-            
+            cutoffTimestamp = int.Parse(timestamps[timestamps.Length-nonoNotes]);
+
+            for(int i = 0; i<output.Length; i++)
+            {
+                if(output[i] == "[ExpertSingle]")
+                {
+                    check = true;
+                }
+
+                else if(check && output[i] != "{" && output[i] != "}")
+                {
+                    string[] subs = output[i].Trim().Split('=');
+
+                    if (check && int.Parse(subs[0].Trim()) > cutoffTimestamp)
+                    {
+                        output.SetValue(" ", i);
+                    }
+                }
+            }
         }
     }
 
