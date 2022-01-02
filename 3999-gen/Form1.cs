@@ -56,6 +56,7 @@ namespace _3999_gen
         {
             chart = new Chart(filePath);
             lblSong.Text = chart.chartName.Replace("&", "&&") + " by " + chart.chartArtist.Replace("&", "&&") + " (Charted by: " + chart.charter.Replace("&", "&&") + ")";
+           
             InitComboBoxes();
         }
 
@@ -76,9 +77,10 @@ namespace _3999_gen
                 if(globalEvent.eventType == "section")
                 {
                     SectionEvent sectionEvent = globalEvent as SectionEvent;
-                    sectionLists.Add(sectionEvent.sectionName);
+                    sectionLists.Add(sectionEvent.sectionName.Replace('_', ' ').Trim());
                 }
             }
+            if(sectionLists.Count == 0) return;
             foreach (string section in sectionLists)
             {
                 string curSection = StripHTML(i.ToString() + ": " + section);
@@ -94,7 +96,6 @@ namespace _3999_gen
                 cmboBoxSection2.Items.Add(curSection);
                 i++;
             }
-            GC.Collect(); // YO I FOUND WHERE THE MEMORY WAS LEAKING
             cmboBoxSection.SelectedIndex = 0;
             cmboBoxSection2.SelectedIndex = 0;
         }
@@ -106,7 +107,10 @@ namespace _3999_gen
 
         private void btnGenerate_Click(object sender, EventArgs e)
         {
-
+            if(!(chart is null) && MessageBox.Show("Skill Issue") == DialogResult.OK)
+            {
+                Application.Exit();
+            }
         }
 
         private void constructWav(string sourcePath, int iterations)
@@ -336,17 +340,25 @@ namespace _3999_gen
 
                 string[] songini = File.ReadAllLines(filename.Split(new[] { "notes.chart" }, StringSplitOptions.None)[0] + "song.ini");
                 chartName = null; chartArtist = null; charter = null;
-                bool hasSongName, hasSongArtist, hasSongCharter;
+                string frets = null;
+                bool hasSongName, hasSongArtist, hasSongCharter, hasFrets;
                 foreach (string entry in songini)
                 {
                     string newEntry = Form1.StripHTML(entry);
                     hasSongName = newEntry.Trim().ToLower().StartsWith("name");
                     hasSongArtist = newEntry.Trim().ToLower().StartsWith("artist");
                     hasSongCharter = newEntry.Trim().ToLower().StartsWith("charter");
+                    hasFrets = newEntry.Trim().ToLower().StartsWith("frets");
                     if (hasSongName) chartName = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasSongArtist) chartArtist = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasSongCharter) charter = newEntry.Trim().Split('=')[1].Trim();
+                    else if (hasFrets) frets = newEntry.Trim().Split('=')[1].Trim();
                     if (!(chartName is null || chartArtist is null || charter is null)) break;
+                }
+
+                if(charter is null && !(frets is null))
+                {
+                    charter = frets; // add support for CH defaulting to frets if charter doesn't exist
                 }
 
                 if (chartName is null) chartName = "Unknown Name";
@@ -492,7 +504,6 @@ namespace _3999_gen
                     {
                         string curLine = lines[startLine + i];
                         int timestamp = Int32.Parse(curLine.Trim().Split('=')[0]);
-
                         string[] RHS = curLine.Split('=')[1].Trim().Split(' ');
                         switch (RHS[0].ToCharArray()[0])
                         {
@@ -511,18 +522,24 @@ namespace _3999_gen
                                     this.numNotes = 1;
                                 }
                                 ExpertData.Add(new NoteEvent(timestamp, noteval, susval, this.numNotes-1));
+
                                 continue;
 
                             case 'S':
                                 int specval = Int32.Parse(RHS[1]);
                                 int speclen = Int32.Parse(RHS[2]);
                                 ExpertData.Add(new SpecialEvent(timestamp, specval, speclen));
+
                                 continue;
 
                             case 'E':
                                 ExpertData.Add(new TrackEvent(timestamp, RHS[1]));
+
                                 continue;
+
                             default:
+                                ErrorMessageAndClose(new Exception("Incorrect ChartType format detected."), "Incorrect ChartType format detected.");
+
                                 break;
                         }
                     }
