@@ -186,33 +186,66 @@ namespace _3999_gen
             ChartGenerator gen = new ChartGenerator(chart);
             gen.Generate(3999, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
 
-            //constructWav(chart.pathName + "\\..\\" + chart.MetaData["MusicStream"], 1);
-        }
-
-        private void constructWav(string sourcePath, int iterations)
-        {
-            WaveFormat waveFormat = new WaveFormat(8000, 8, 2);
-            string outputPath = sourcePath.Substring(0, sourcePath.Length - 4) + "-3999.wav";
-
-            StreamReader inputStream = new StreamReader(sourcePath);
-            StreamWriter outputStream = new StreamWriter(outputPath);
-
-            using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new Mp3FileReader(inputStream.BaseStream)))
-            using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
+            if(chart.MetaData["MusicStream"] is null)
             {
-                byte[] bytes = new byte[waveStream.Length];
-                waveStream.Read(bytes, 0, (int)waveStream.Length);
 
-                for (int i = 0; i < iterations; i++)
+            }
+
+            else
+            {
+                int[] seconds = TimestampToSeconds(chart, tickA, tickB);
+                if (seconds != new int[] { -1, -1 })
                 {
-                    waveFileWriter.Write(bytes, 0, bytes.Length);
-                }
+                    if(chart.MetaData["MusicStream"].Contains(".wav"))
+                    {
 
-                waveFileWriter.Flush();
+                    }
+
+                    else
+                    {
+                        AudioUtils converter = new AudioUtils();
+                        WavFileUtils trimmer = new WavFileUtils();
+                        converter.ConvertToWav(chart.pathName + "\\..\\" + chart.MetaData["MusicStream"], chart.pathName + "\\..\\temp.wav");
+                        trimmer.TrimWavFile(chart.pathName + "\\..\\temp.wav", chart.pathName + "\\..\\temp2.wav", seconds[0], seconds[1]);
+                        trimmer.MultiplyWav(chart.pathName + "\\..\\temp2.wav", chart.pathName + "\\..\\3999-audio.wav", gen.iterations);
+                    }
+                }
             }
         }
 
+        private int[] TimestampToSeconds(Chart chart, int startTimestamp, int endTimestamp)
+        {
+            int resolution = chart.ticksPerQuarterNote;
+            int bpm = 0;
+            int tickStart = 0;
+            int tickEnd = 0;
+            bool shit = false;
 
+            foreach(SyncEvent sync in chart.SyncData)
+            {
+                if (sync.eventType == "B")
+                {
+                    BPMEvent bpmevent = sync as BPMEvent;
+
+                    if(startTimestamp < bpmevent.timestamp && endTimestamp > bpmevent.timestamp)
+                    {
+                        shit = true;
+                        return new int[] { -1 , -1 };
+                    }
+
+                    else if(!shit && bpmevent.timestamp < startTimestamp)
+                    {
+                        bpm = bpmevent.BPM;
+                        tickStart = startTimestamp;
+                        tickEnd = endTimestamp;
+                    }
+                }
+            }
+
+            int[] output = new int[] { tickStart / resolution * 60 / bpm, tickEnd / resolution * 60 / bpm };
+
+            return output;
+        }
     }
 
     public class TimestampedEvent
@@ -873,15 +906,81 @@ namespace _3999_gen
         }
     }
 
-    public class AudioConverter
+    public class AudioUtils
     {
         public string SourcePath { get; private set; }
 
         public string DestinationPath { get; private set; }
 
-        public AudioConverter(string sourcePath, string destPath)
+        public AudioUtils()
         {
 
+        }
+
+        public void ConvertToWav(string sourcePath, string destPath)
+        {
+            this.SourcePath = sourcePath;
+            this.DestinationPath = destPath;
+
+            ConstructWav(sourcePath, destPath, 1);
+        }
+
+        public void ConvertToWavAndMultiply(string sourcePath, string destPath, int iterations)
+        {
+            this.SourcePath = sourcePath;
+            this.DestinationPath = destPath;
+
+            ConstructWav(sourcePath, destPath, iterations);
+        }
+
+        private void ConstructWav(string sourcePath, string destPath, int iterations)
+        {
+            WaveFormat waveFormat = new WaveFormat(8000, 8, 2);
+            string outputPath = destPath;
+
+            string fileFormat = sourcePath.Substring(sourcePath.Length-4);
+
+            StreamReader inputStream = new StreamReader(sourcePath);
+            StreamWriter outputStream = new StreamWriter(outputPath);
+
+            if(fileFormat == ".mp3")
+            {
+                using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new Mp3FileReader(inputStream.BaseStream)))
+                using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
+                {
+                    byte[] bytes = new byte[waveStream.Length];
+                    waveStream.Read(bytes, 0, (int)waveStream.Length);
+
+                    for (int i = 0; i < iterations; i++)
+                    {
+                        waveFileWriter.Write(bytes, 0, bytes.Length);
+                    }
+
+                    waveFileWriter.Flush();
+                }
+            }
+
+            else if(fileFormat == ".ogg")
+            {
+                using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new VorbisWaveReader(inputStream.BaseStream)))
+                using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
+                {
+                    byte[] bytes = new byte[waveStream.Length];
+                    waveStream.Read(bytes, 0, (int)waveStream.Length);
+
+                    for (int i = 0; i < iterations; i++)
+                    {
+                        waveFileWriter.Write(bytes, 0, bytes.Length);
+                    }
+
+                    waveFileWriter.Flush();
+                }
+            }
+
+            else
+            {
+                MessageBox.Show("Unsupported Song Format");
+            }
         }
     }
 
@@ -906,7 +1005,12 @@ namespace _3999_gen
 
     public class WavFileUtils
     {
-        public static void TrimWavFile(string inPath, string outPath, int cutFromStart, int cutFromEnd)
+        public WavFileUtils()
+        {
+
+        }
+
+        public void TrimWavFile(string inPath, string outPath, int cutFromStart, int cutFromEnd)
         {
             using (WaveFileReader reader = new WaveFileReader(inPath))
             {
@@ -922,6 +1026,35 @@ namespace _3999_gen
                     int endPos = (int)reader.Length - endBytes;
 
                     TrimWavFile(reader, writer, startPos, endPos);
+                }
+            }
+        }
+
+        public void MultiplyWav(string inPath, string outPath, int iterations)
+        {
+            using (WaveFileReader reader = new WaveFileReader(inPath))
+            {
+                using (WaveFileWriter writer = new WaveFileWriter(outPath, reader.WaveFormat))
+                {
+                    for(int i = 0; i<iterations; i++)
+                    {
+                        reader.Position = 0;
+                        byte[] buffer = new byte[1024];
+
+                        while (reader.Position < reader.Length)
+                        {
+                            int bytesRequired = (int)(reader.Length - reader.Position);
+                            if (bytesRequired > 0)
+                            {
+                                int bytesToRead = Math.Min(bytesRequired, buffer.Length);
+                                int bytesRead = reader.Read(buffer, 0, bytesToRead);
+                                if (bytesRead > 0)
+                                {
+                                    writer.Write(buffer, 0, bytesRead);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
