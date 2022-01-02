@@ -811,7 +811,7 @@ namespace _3999_gen
 
                     else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
                     {
-                        output.Add("  " + (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))) + " = " + chartevent.eventType + chartevent.RawData);
+                        output.Add("  " + (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))) + " = " + chartevent.eventType + " " + chartevent.RawData);
                     }
                 }
             }
