@@ -235,7 +235,7 @@ namespace _3999_gen
 
             
 
-            gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
+            gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}");
 
             /*if(chart.MetaData["MusicStream"] is null)
             {
@@ -473,6 +473,8 @@ namespace _3999_gen
 
         public string pathName { get; private set; }
 
+        public List<string> iniData { get; private set; }
+
         public Dictionary<string, string> MetaData { get; private set; }
         public List<SyncEvent> SyncData { get; private set; }
 
@@ -501,8 +503,9 @@ namespace _3999_gen
                 this.SyncData = new List<SyncEvent>();
                 this.EventsData = new List<GlobalEvent>();
                 this.ExpertData = new List<ChartEvent>();
+                this.iniData = new List<string>();
 
-                string[] songini = File.ReadAllLines(filename.Split(new[] { "notes.chart" }, StringSplitOptions.None)[0] + "song.ini");
+                string[] songini = File.ReadAllLines($"{filename.Split(new[] { "notes.chart" }, StringSplitOptions.None)[0]}song.ini");
                 chartName = null; chartArtist = null; charter = null;
                 string frets = null;
                 bool hasSongName, hasSongArtist, hasSongCharter, hasFrets;
@@ -517,7 +520,7 @@ namespace _3999_gen
                     else if (hasSongArtist) chartArtist = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasSongCharter) charter = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasFrets) frets = newEntry.Trim().Split('=')[1].Trim();
-                    if (!(chartName is null || chartArtist is null || charter is null)) break;
+                    iniData.Add(entry);
                 }
 
                 if (charter is null && !(frets is null))
@@ -872,10 +875,37 @@ namespace _3999_gen
             GenerateEventData();
             GenerateExpertChart(iterations);
 
-            using (StreamWriter writer = File.CreateText(path + "\\notes-3999.chart"))
+            bool exists = System.IO.Directory.Exists(path);
+
+            if(!exists)
+            {
+                System.IO.Directory.CreateDirectory(path);
+            }
+
+            using (StreamWriter writer = File.CreateText($"{path}\\notes.chart"))
             {
                 foreach (string line in output)
                 {
+                    writer.WriteLine(line);
+                }
+            }
+
+            using (StreamWriter writer = File.CreateText($"{path}\\song.ini"))
+            {
+                foreach (string line in Chart.iniData)
+                {
+                    if (line.Trim().ToLower().StartsWith("name"))
+                    {
+                        if(startSection != endSection)
+                        {
+                            writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection} - {endSection}");
+                        }
+                        else
+                        {
+                            writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection})");
+                        }
+                        continue;
+                    }
                     writer.WriteLine(line);
                 }
             }
