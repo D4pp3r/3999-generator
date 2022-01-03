@@ -60,8 +60,7 @@ namespace _3999_gen
         private void readChart(string filePath)
         {
             chart = new Chart(filePath);
-            lblSong.Text = chart.chartName.Replace("&", "&&") + " by " + chart.chartArtist.Replace("&", "&&") + " (Charted by: " + chart.charter.Replace("&", "&&") + ")";
-
+            lblSong.Text = $"{chart.chartName.Replace("&", "&&")} by {chart.chartArtist.Replace("&","&&")} (Charted by: {chart.charter.Replace("&", "&&")})";
             InitComboBoxes();
         }
 
@@ -89,7 +88,7 @@ namespace _3999_gen
             if (sectionLists.Count == 0) return;
             foreach (string section in sectionLists)
             {
-                string curSection = StripHTML(i.ToString() + ": " + section);
+                string curSection = StripHTML($"{i}: {section}");
                 stringSize = e.Graphics.MeasureString(curSection, font);
                 if (stringSize.Width > maxWidth)
                 {
@@ -205,9 +204,9 @@ namespace _3999_gen
                     {
                         AudioUtils converter = new AudioUtils();
                         WavFileUtils trimmer = new WavFileUtils();
-                        converter.ConvertToWav(chart.pathName + "\\..\\" + chart.MetaData["MusicStream"], chart.pathName + "\\..\\temp.wav");
-                        trimmer.TrimWavFile(chart.pathName + "\\..\\temp.wav", chart.pathName + "\\..\\temp2.wav", seconds[0], seconds[1]);
-                        trimmer.MultiplyWav(chart.pathName + "\\..\\temp2.wav", chart.pathName + "\\..\\3999-audio.wav", gen.iterations);
+                        converter.ConvertToWav($"{chart.pathName}\\..\\{chart.MetaData["MusicStream"]}", $"{chart.pathName}\\..\\temp.wav");
+                        trimmer.TrimWavFile($"{chart.pathName}\\..\\temp.wav", $"{chart.pathName}\\..\\temp2.wav", seconds[0], seconds[1]);
+                        trimmer.MultiplyWav($"{chart.pathName}\\..\\temp2.wav", $"{chart.pathName}\\..\\3999-audio.wav", gen.iterations);
                     }
                 }
             }
@@ -425,7 +424,7 @@ namespace _3999_gen
 
         private static void ErrorMessageAndClose(Exception e, string errorStr)
         {
-            if (MessageBox.Show(e.Message + "\n\n" + e.ToString(), errorStr) == DialogResult.OK)
+            if (MessageBox.Show($"{e.Message}\n\n{e}", errorStr) == DialogResult.OK)
             {
                 Application.Exit();
             }
@@ -477,7 +476,7 @@ namespace _3999_gen
             }
             catch (Exception e)
             {
-                ErrorMessageAndClose(e, "Cannot find path: " + filename);
+                ErrorMessageAndClose(e, $"Cannot find path: {pathName}");
             }
         }
 
@@ -811,19 +810,24 @@ namespace _3999_gen
 
             foreach (string key in Chart.MetaData.Keys)
             {
-                if (key == "Name")
+                switch (key)
                 {
-                    output.Add("  " + key + " = \"" + Chart.MetaData[key] + " - " + startSection + " to " + endSection + " " + numNotes + "\"");
-                }
+                    case var k when k == "Name":
+                        output.Add($" {key} = \"{numNotes} {Chart.chartName} ({startSection} - {endSection})\"");
+                        break;
+                    case var k when k == "Artist":
+                        output.Add($" {key} = \"{Chart.chartArtist}\"");
+                        break;
+                    case var k when k == "Charter":
+                        output.Add($" {key} = \"{Chart.charter}\"");
+                        break;
+                    case var k when k == "Album" || key == "Year" || key == "Genre" || key == "MediaType" || key == "MusicStream":
+                        output.Add($" {key} = \"{Chart.MetaData[key]}\"");
+                        break;
+                    default:
+                        output.Add($" {key} = {Chart.MetaData[key]}");
+                        break;
 
-                else if (key == "Artist" || key == "Charter" || key == "Album" || key == "Year" || key == "Genre" || key == "MediaType" || key == "MusicStream")
-                {
-                    output.Add("  " + key + " = \"" + Chart.MetaData[key] + "\"");
-                }
-
-                else
-                {
-                    output.Add("  " + key + " = " + Chart.MetaData[key]);
                 }
             }
 
@@ -839,15 +843,21 @@ namespace _3999_gen
             {
                 foreach (SyncEvent chartevent in Chart.SyncData)
                 {
+                    int newTimestamp = -1;
                     if (chartevent.timestamp == 0)
                     {
-                        output.Add("  " + (chartevent.timestamp + (i * (endTimestamp - startTimestamp))) + " = " + chartevent.eventType + " " + chartevent.RawData);
+                        newTimestamp = (chartevent.timestamp + (i * (endTimestamp - startTimestamp)));
+                        
                     }
-
                     else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
                     {
-                        output.Add("  " + (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))) + " = " + chartevent.eventType + " " + chartevent.RawData);
+                        newTimestamp = (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp)));
                     }
+                    else
+                    {
+                        continue;
+                    }
+                    output.Add($" {newTimestamp} = {chartevent.eventType} {chartevent.RawData}");
                 }
             }
 
@@ -863,7 +873,7 @@ namespace _3999_gen
             {
                 if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
                 {
-                    output.Add("  " + (chartevent.timestamp - startTimestamp) + " = " + chartevent.RawData);
+                    output.Add($" {chartevent.timestamp - startTimestamp} = {chartevent.RawData}");
                 }
             }
 
@@ -881,11 +891,11 @@ namespace _3999_gen
                 {
                     if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
                     {
-                        output.Add("  " + (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))) + " = " + chartevent.RawData);
-
-                        if (!timestamps.Contains((chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))).ToString()) && chartevent.eventType == "N")
+                        int newTimestamp = (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp)));
+                        output.Add($" {newTimestamp} = {chartevent.RawData}");
+                        if (!timestamps.Contains($"{newTimestamp}") && chartevent.eventType == "N")
                         {
-                            timestamps.Add((chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp))).ToString());
+                            timestamps.Add($"{newTimestamp}");
                             newNoteCount++;
                         }
 
