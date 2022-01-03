@@ -165,7 +165,7 @@ namespace _3999_gen
         {
             funnycode.Enqueue(e.KeyChar);
             string curstring = new string(funnycode.ToArray());
-            if (curstring == "oboyoboy")
+            if (curstring == "oboyoboy" || curstring == "54535453")
             {
                 if (MessageBox.Show("Hyperspeed Unlocked!") == DialogResult.OK)
                 {
@@ -259,6 +259,8 @@ namespace _3999_gen
                     }
                 }
             }*/
+
+            MessageBox.Show("HOLY FUCK !!!!", "YOU ARE WINNER!");
         }
 
         private float[] TimestampToSeconds(Chart chart, int startTimestamp, int endTimestamp)
@@ -582,6 +584,7 @@ namespace _3999_gen
                 case "}":
                     endLine = i - 1;
                     InitChartData(state, startLine, endLine, lines);
+                    state = -1;
                     return;
             }
         }
