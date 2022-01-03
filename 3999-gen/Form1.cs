@@ -142,15 +142,16 @@ namespace _3999_gen
                 if (globalEvent.eventType == "section")
                 {
                     SectionEvent section = globalEvent as SectionEvent;
+                    if (index == section.sectionIndex)
+                    {
+                        tickFlag = true;
+                    }
                     if (tickFlag)
                     {
                         tickB = section.timestamp - 1;
                         break;
                     }
-                    if (index == section.sectionIndex)
-                    {
-                        tickFlag = true;
-                    }
+                    
 
                 }
             }
@@ -183,9 +184,31 @@ namespace _3999_gen
             if (chart is null) return;
             if (tickA == -1 || tickB == -1) return;
             ChartGenerator gen = new ChartGenerator(chart);
-            gen.Generate(3999, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
 
-            if(chart.MetaData["MusicStream"] is null)
+            int numNotes = 3999;
+
+            if(rdoBtnCustom.Checked)
+            {
+                if(!Int32.TryParse(txtBoxNoteCount.Text, out numNotes) || numNotes <= 0)
+                {
+                    MessageBox.Show("Not a valid note count, to the pokey with you.");
+                    return;
+                }
+            }
+            else if(rdoBtnIteration.Checked)
+            {
+                int numIterations = 0;
+                if (!Int32.TryParse(txtBoxLoopCount.Text, out numIterations) || numIterations <= 0)
+                {
+                    MessageBox.Show("Not a valid note count, to the pokey with you.");
+                    return;
+                }
+                numNotes = numIterations * chart.NumNotesDuration(tickA, tickB, chart.ExpertData);
+            }
+
+            gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
+
+            /*if(chart.MetaData["MusicStream"] is null)
             {
 
             }
@@ -209,7 +232,7 @@ namespace _3999_gen
                         trimmer.MultiplyWav($"{chart.pathName}\\..\\temp2.wav", $"{chart.pathName}\\..\\3999-audio.wav", gen.iterations);
                     }
                 }
-            }
+            }*/
         }
 
         private float[] TimestampToSeconds(Chart chart, int startTimestamp, int endTimestamp)
@@ -680,6 +703,22 @@ namespace _3999_gen
             }
         }
 
+        public int NumNotesDuration(int tickA, int tickB, List<ChartEvent> eventList)
+        {
+            int numNotes = 0;
+            int mostrecentTimestamp = -1;
+            foreach(ChartEvent e in eventList)
+            { 
+                if(e.eventType == "N" && e.timestamp >= tickA && mostrecentTimestamp != e.timestamp)
+                {
+                    numNotes++;
+                }
+                if (e.timestamp > tickB) break;
+                mostrecentTimestamp = e.timestamp;
+            }
+            return numNotes;
+        }
+
         public NoteEvent GetNextNote(int timestamp, List<ChartEvent> eventList)
         {
             NoteEvent note = null;
@@ -853,10 +892,23 @@ namespace _3999_gen
                     {
                         newTimestamp = (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp)));
                     }
-                    else
+                    else                    
                     {
                         continue;
                     }
+
+                    // Possible boilerplate code to add most recent TS + BPM event
+                    //if(chartevent.timestamp == startTimestamp)
+                    //{
+                    //    SyncEvent newEvent = null;
+                    //    foreach(SyncEvent s in Chart.SyncData)
+                    //    {
+                    //        newEvent = s;
+                    //        if (s.timestamp == startTimestamp) break;
+                    //    }
+                    //    output.Add($" {newTimestamp} = {chartevent.eventType} {chartevent.RawData}");
+                    //}
+
                     output.Add($" {newTimestamp} = {chartevent.eventType} {chartevent.RawData}");
                 }
             }
