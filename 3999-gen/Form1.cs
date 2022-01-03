@@ -828,7 +828,8 @@ namespace _3999_gen
             this.endTimestamp = endTimestamp;
             this.startSection = startSection;
             this.endSection = endSection;
-            this.sectionLength = Chart.NumNewNotes(Chart.GetSection(startTimestamp, endTimestamp, Chart.ExpertData));
+            this.ExpertNotes = Chart.GetSection(startTimestamp, endTimestamp, Chart.ExpertData);
+            this.sectionLength = Chart.NumNewNotes(this.ExpertNotes);
             
             if(sectionLength == 0 && MessageBox.Show("cmon bruh") == DialogResult.OK)
             {
