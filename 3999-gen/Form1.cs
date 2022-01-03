@@ -237,7 +237,7 @@ namespace _3999_gen
 
             gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}");
 
-            /*if(chart.MetaData["MusicStream"] is null)
+            if(chart.MetaData["MusicStream"] is null)
             {
 
             }
@@ -261,7 +261,7 @@ namespace _3999_gen
                         trimmer.MultiplyWav($"{chart.pathName}\\..\\temp2.wav", $"{chart.pathName}\\..\\3999-audio.wav", gen.iterations);
                     }
                 }
-            }*/
+            }
 
             MessageBox.Show("HOLY FUCK !!!!", "YOU ARE WINNER!");
         }
@@ -952,9 +952,9 @@ namespace _3999_gen
                 foreach (SyncEvent chartevent in Chart.SyncData)
                 {
                     int newTimestamp = -1;
-                    if (chartevent.timestamp == 0)
+                    if (chartevent.timestamp <= startTimestamp)
                     {
-                        newTimestamp = (chartevent.timestamp + (i * (endTimestamp - startTimestamp)));
+                        newTimestamp = (0 + (i * (endTimestamp - startTimestamp)));
 
                     }
                     else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp < endTimestamp)
