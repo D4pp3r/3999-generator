@@ -60,7 +60,7 @@ namespace _3999_gen
         private void readChart(string filePath)
         {
             chart = new Chart(filePath);
-            lblSong.Text = $"{chart.chartName.Replace("&", "&&")} by {chart.chartArtist.Replace("&","&&")} (Charted by: {chart.charter.Replace("&", "&&")})";
+            lblSong.Text = $"{chart.chartName.Replace("&", "&&")} by {chart.chartArtist.Replace("&", "&&")} (Charted by: {chart.charter.Replace("&", "&&")})";
             InitComboBoxes();
         }
 
@@ -108,24 +108,32 @@ namespace _3999_gen
         private void cmboBoxSection_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (chart is null) return;
+
+            if (cmboBoxSection.SelectedIndex > cmboBoxSection.SelectedIndex)
+            {
+                cmboBoxSection.SelectedIndex = cmboBoxSection2.SelectedIndex;
+                return;
+            }
+
             string curSection = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
             int index = cmboBoxSection.SelectedIndex;
-            foreach (GlobalEvent g in chart.EventsData)
+            foreach (GlobalEvent g in chart.EventsData.FindAll(x => x.eventType == "section" && (x as SectionEvent).sectionIndex == index))
             {
-                if (g.eventType == "section")
-                {
-                    SectionEvent section = g as SectionEvent;
-                    if (index == section.sectionIndex)
-                    {
-                        tickA = section.timestamp;
-                    }
-                }
+                tickA = g.timestamp;
             }
+            cmboBoxSection2.SelectedIndex = cmboBoxSection.SelectedIndex;
         }
 
         private void cmboBoxSection2_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (chart is null) return;
+
+            if(cmboBoxSection2.SelectedIndex < cmboBoxSection.SelectedIndex)
+            {
+                cmboBoxSection2.SelectedIndex = cmboBoxSection.SelectedIndex;
+                return;
+            }
+
             string curSection = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
 
             bool tickFlag = false;
@@ -136,23 +144,18 @@ namespace _3999_gen
                 tickB = chart.lastTimeStamp;
             }
 
-            foreach (GlobalEvent globalEvent in chart.EventsData)
+            foreach (GlobalEvent globalEvent in chart.EventsData.FindAll(x => x.eventType == "section"))
             {
 
-                if (globalEvent.eventType == "section")
+                SectionEvent section = globalEvent as SectionEvent;
+                if (index == section.sectionIndex)
                 {
-                    SectionEvent section = globalEvent as SectionEvent;
-                    if (index == section.sectionIndex)
-                    {
-                        tickFlag = true;
-                    }
-                    if (tickFlag)
-                    {
-                        tickB = section.timestamp - 1;
-                        break;
-                    }
-                    
-
+                    tickFlag = true;
+                }
+                if (tickFlag)
+                {
+                    tickB = section.timestamp;
+                    break;
                 }
             }
 
@@ -170,7 +173,7 @@ namespace _3999_gen
                 }
             }
 
-            else if(curstring == "borm tim")
+            else if (curstring == "borm tim")
             {
                 if (MessageBox.Show("Get your BormoTime Guitar from bormotime.com today!") == DialogResult.OK)
                 {
@@ -187,15 +190,21 @@ namespace _3999_gen
 
             int numNotes = 3999;
 
-            if(rdoBtnCustom.Checked)
+            if (rdoBtnSong.Checked)
             {
-                if(!Int32.TryParse(txtBoxNoteCount.Text, out numNotes) || numNotes <= 0)
+                tickA = 0;
+                tickB = chart.lastTimeStamp + chart.ticksPerQuarterNote*4;
+            }
+
+            if (rdoBtnCustom.Checked)
+            {
+                if (!Int32.TryParse(txtBoxNoteCount.Text, out numNotes) || numNotes <= 0)
                 {
                     MessageBox.Show("Not a valid note count, to the pokey with you.");
                     return;
                 }
             }
-            else if(rdoBtnIteration.Checked)
+            else if (rdoBtnIteration.Checked)
             {
                 int numIterations = 0;
                 if (!Int32.TryParse(txtBoxLoopCount.Text, out numIterations) || numIterations <= 0)
@@ -205,6 +214,8 @@ namespace _3999_gen
                 }
                 numNotes = numIterations * chart.NumNotesDuration(tickA, tickB, chart.ExpertData);
             }
+
+            
 
             gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
 
@@ -243,21 +254,21 @@ namespace _3999_gen
             int tickEnd = 0;
             bool shit = false;
 
-            foreach(SyncEvent sync in chart.SyncData)
+            foreach (SyncEvent sync in chart.SyncData)
             {
                 if (sync.eventType == "B")
                 {
                     BPMEvent bpmevent = sync as BPMEvent;
 
-                    if(startTimestamp < bpmevent.timestamp && endTimestamp > bpmevent.timestamp)
+                    if (startTimestamp < bpmevent.timestamp && endTimestamp > bpmevent.timestamp)
                     {
                         shit = true;
-                        return new float[] { -1 , -1 };
+                        return new float[] { -1, -1 };
                     }
 
-                    else if(!shit && bpmevent.timestamp <= startTimestamp)
+                    else if (!shit && bpmevent.timestamp <= startTimestamp)
                     {
-                        bpm = bpmevent.BPM/1000;
+                        bpm = bpmevent.BPM / 1000;
                         tickStart = startTimestamp;
                         tickEnd = endTimestamp;
                     }
@@ -389,12 +400,15 @@ namespace _3999_gen
 
         public int NoteIndex { get; private set; }
 
-        public NoteEvent(int timestamp, int newNoteValue, int newSustainLength, int noteIndex, string newData) : base(timestamp, "N", newData)
+        public bool isNewNote { get; private set; }
+
+        public NoteEvent(int timestamp, int newNoteValue, int newSustainLength, int noteIndex, bool isNewNote, string newData) : base(timestamp, "N", newData)
         {
             this.NoteValue = newNoteValue;
             this.SustainLength = newSustainLength;
             this.NoteType = (NoteEnum)this.NoteValue;
             this.NoteIndex = noteIndex;
+            this.isNewNote = isNewNote;
         }
 
     }
@@ -654,18 +668,24 @@ namespace _3999_gen
                                 int noteval = Int32.Parse(RHS[1]);
                                 // when the imposter is SUS am i right???
                                 int susval = Int32.Parse(RHS[2]);
+                                bool isNewNote = false;
                                 if (ExpertData.Count != 0)
                                 {
                                     if (timestamp != ExpertData[ExpertData.Count - 1].timestamp)
                                     {
                                         this.numNotes++;
+                                        isNewNote = true;
                                     }
                                 }
                                 else
                                 {
                                     this.numNotes = 1;
+                                    if(ExpertData.Count == 0)
+                                    {
+                                        isNewNote = true;
+                                    }
                                 }
-                                ExpertData.Add(new NoteEvent(timestamp, noteval, susval, this.numNotes - 1, curLine.Split('=')[1].Trim()));
+                                ExpertData.Add(new NoteEvent(timestamp, noteval, susval, this.numNotes - 1, isNewNote, curLine.Split('=')[1].Trim()));
 
                                 continue;
 
@@ -706,35 +726,45 @@ namespace _3999_gen
         public int NumNotesDuration(int tickA, int tickB, List<ChartEvent> eventList)
         {
             int numNotes = 0;
-            int mostrecentTimestamp = -1;
-            foreach(ChartEvent e in eventList)
-            { 
-                if(e.eventType == "N" && e.timestamp >= tickA && mostrecentTimestamp != e.timestamp)
-                {
-                    numNotes++;
-                }
-                if (e.timestamp > tickB) break;
-                mostrecentTimestamp = e.timestamp;
+            foreach(NoteEvent n in GetSection(tickA, tickB, eventList).FindAll(x => x.isNewNote))
+            {
+                numNotes++;
             }
             return numNotes;
         }
 
+        public List<NoteEvent> GetSection(int tickA, int tickB, List<ChartEvent> eventList)
+        {
+            List<NoteEvent> notes = new List<NoteEvent>();
+            foreach (ChartEvent e in eventList.FindAll(x => x.eventType == "N" && x.timestamp >= tickA && x.timestamp < tickB))
+            {
+                notes.Add(e as NoteEvent);
+            }
+            return notes;
+        }
+
+        public int NumNewNotes(List<NoteEvent> noteList)
+        {
+            int i = 0;
+            foreach(NoteEvent n in noteList.FindAll(x => x.isNewNote))
+            {
+                i++;
+            }
+            return i;
+        }
+
         public NoteEvent GetNextNote(int timestamp, List<ChartEvent> eventList)
         {
-            NoteEvent note = null;
-            foreach (ChartEvent e in eventList)
+            NoteEvent n = null;
+            foreach(ChartEvent e in eventList.FindAll(x => x.eventType == "N"))
             {
-                if (e.eventType == "N")
+                if(e.timestamp >= timestamp)
                 {
-                    note = e as NoteEvent;
-                    if (timestamp >= note.timestamp)
-                    {
-                        break;
-                    }
+                    n = e as NoteEvent;
+                    break;
                 }
             }
-            if (note is null) ErrorMessageAndClose(new Exception("no next note"), "there was no next note, to the pokey with you");
-            return note;
+            return n;
         }
 
 
@@ -775,6 +805,8 @@ namespace _3999_gen
 
         public int numNotes { get; private set; }
 
+        private List<NoteEvent> ExpertNotes;
+
         public ChartGenerator(Chart baseChart)
         {
             this.Chart = baseChart;
@@ -796,28 +828,13 @@ namespace _3999_gen
             this.endTimestamp = endTimestamp;
             this.startSection = startSection;
             this.endSection = endSection;
-
-            foreach (ChartEvent chartevent in Chart.ExpertData)
+            this.sectionLength = Chart.NumNewNotes(Chart.GetSection(startTimestamp, endTimestamp, Chart.ExpertData));
+            
+            if(sectionLength == 0 && MessageBox.Show("cmon bruh") == DialogResult.OK)
             {
-                if (chartevent.eventType == "N")
-                {
-                    NoteEvent note = chartevent as NoteEvent;
-
-                    if (note.timestamp == startTimestamp)
-                    {
-                        startIndex = note.NoteIndex;
-                    }
-
-                    else if (note.timestamp < endTimestamp)
-                    {
-                        lastNote = note;
-                    }
-                }
+                Application.Exit();
             }
 
-            endIndex = lastNote.NoteIndex;
-
-            sectionLength = endIndex - startIndex;
 
             iterations = numNotes / sectionLength;
 
@@ -886,13 +903,13 @@ namespace _3999_gen
                     if (chartevent.timestamp == 0)
                     {
                         newTimestamp = (chartevent.timestamp + (i * (endTimestamp - startTimestamp)));
-                        
+
                     }
-                    else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    else if (chartevent.timestamp >= startTimestamp && chartevent.timestamp < endTimestamp)
                     {
                         newTimestamp = (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp)));
                     }
-                    else                    
+                    else
                     {
                         continue;
                     }
@@ -923,7 +940,7 @@ namespace _3999_gen
 
             foreach (GlobalEvent chartevent in Chart.EventsData)
             {
-                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp < endTimestamp)
                 {
                     output.Add($" {chartevent.timestamp - startTimestamp} = {chartevent.RawData}");
                 }
@@ -937,28 +954,22 @@ namespace _3999_gen
             output.Add("[ExpertSingle]");
             output.Add("{");
 
-            for (int i = 0; i < iterations; i++)
+            for (int iter = 0; iter < iterations; iter++)
             {
-                foreach (ChartEvent chartevent in Chart.ExpertData)
+                foreach (NoteEvent n in ExpertNotes)
                 {
-                    if (chartevent.timestamp >= startTimestamp && chartevent.timestamp <= endTimestamp)
+                    if (n.isNewNote)
                     {
-                        int newTimestamp = (chartevent.timestamp - startTimestamp + (i * (endTimestamp - startTimestamp)));
-                        output.Add($" {newTimestamp} = {chartevent.RawData}");
-                        if (!timestamps.Contains($"{newTimestamp}") && chartevent.eventType == "N")
-                        {
-                            timestamps.Add($"{newTimestamp}");
-                            newNoteCount++;
-                        }
-
-                        if (newNoteCount >= numNotes)
+                        newNoteCount++;
+                        if(newNoteCount > numNotes)
                         {
                             break;
                         }
                     }
+                    int newTimestamp = n.timestamp - startTimestamp + (iter * (endTimestamp - startTimestamp));
+                    output.Add($" {newTimestamp} = {n.RawData}");
                 }
-
-                if (newNoteCount >= numNotes)
+                if (newNoteCount > numNotes)
                 {
                     break;
                 }
@@ -1000,12 +1011,12 @@ namespace _3999_gen
             WaveFormat waveFormat = new WaveFormat(8000, 8, 2);
             string outputPath = destPath;
 
-            string fileFormat = sourcePath.Substring(sourcePath.Length-4);
+            string fileFormat = sourcePath.Substring(sourcePath.Length - 4);
 
             StreamReader inputStream = new StreamReader(sourcePath);
             StreamWriter outputStream = new StreamWriter(outputPath);
 
-            if(fileFormat == ".mp3")
+            if (fileFormat == ".mp3")
             {
                 using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new Mp3FileReader(inputStream.BaseStream)))
                 using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
@@ -1022,7 +1033,7 @@ namespace _3999_gen
                 }
             }
 
-            else if(fileFormat == ".ogg")
+            else if (fileFormat == ".ogg")
             {
                 using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new VorbisWaveReader(inputStream.BaseStream)))
                 using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
@@ -1098,7 +1109,7 @@ namespace _3999_gen
             {
                 using (WaveFileWriter writer = new WaveFileWriter(outPath, reader.WaveFormat))
                 {
-                    for(int i = 0; i<iterations; i++)
+                    for (int i = 0; i < iterations; i++)
                     {
                         reader.Position = 0;
                         byte[] buffer = new byte[1024];
