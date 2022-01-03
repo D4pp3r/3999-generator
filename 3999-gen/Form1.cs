@@ -1078,7 +1078,7 @@ namespace _3999_gen
 
         private static void TrimWavFile(WaveFileReader reader, WaveFileWriter writer, float startPos, float endPos)
         {
-            reader.Position = (int)startPos;
+            reader.Position = Math.Abs((int)startPos);
             byte[] buffer = new byte[1024];
             while (reader.Position < endPos)
             {
