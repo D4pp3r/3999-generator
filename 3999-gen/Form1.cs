@@ -148,7 +148,7 @@ namespace _3999_gen
                         tickB = section.timestamp - 1;
                         break;
                     }
-                    if (index == section.sectionIndex)
+                    if (index-1 == section.sectionIndex)
                     {
                         tickFlag = true;
                     }
@@ -181,10 +181,27 @@ namespace _3999_gen
         }
         private void btnGenerate_Click(object sender, EventArgs e)
         {
+            int numNotes = 0;
             if (chart is null) return;
             if (tickA == -1 || tickB == -1) return;
+
+            if(rdoBtn3999.Checked)
+            {
+                numNotes = 3999;
+            }
+
+            else if(rdoBtnCustom.Checked)
+            {
+                numNotes = int.Parse(txtBoxNoteCount.Text);
+            }
+
+            else if (rdoBtnIteration.Checked)
+            {
+                numNotes = 3999;
+            }
+
             ChartGenerator gen = new ChartGenerator(chart);
-            gen.Generate(3999, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
+            gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
 
             if(chart.MetaData["MusicStream"] is null)
             {
@@ -193,7 +210,7 @@ namespace _3999_gen
 
             else
             {
-                float[] seconds = TimestampToSeconds(chart, tickA, tickB);
+                float[] seconds = TimestampToSeconds(chart, tickA, tickB + (chart.ticksPerQuarterNote/4));
                 if (seconds != new float[] { -1, -1 })
                 {
                     if(chart.MetaData["MusicStream"].Contains(".wav"))
