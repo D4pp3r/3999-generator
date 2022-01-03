@@ -184,7 +184,7 @@ namespace _3999_gen
         }
         private void btnGenerate_Click(object sender, EventArgs e)
         {
-            int numNotes = 0;
+            int numNotes = 3999;
             if (chart is null) return;
             if (tickA == -1 || tickB == -1) return;
 
@@ -204,8 +204,6 @@ namespace _3999_gen
             }
 
             ChartGenerator gen = new ChartGenerator(chart);
-
-            int numNotes = 3999;
 
             if (rdoBtnSong.Checked)
             {
