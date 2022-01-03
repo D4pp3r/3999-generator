@@ -582,6 +582,7 @@ namespace _3999_gen
                 case "}":
                     endLine = i - 1;
                     InitChartData(state, startLine, endLine, lines);
+                    state = -1;
                     return;
             }
         }
