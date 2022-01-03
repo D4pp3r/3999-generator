@@ -201,7 +201,7 @@ namespace _3999_gen
 
             ChartGenerator gen = new ChartGenerator(chart);
             gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), chart.pathName + "\\..");
-
+            /*
             if(chart.MetaData["MusicStream"] is null)
             {
 
@@ -226,7 +226,7 @@ namespace _3999_gen
                         trimmer.MultiplyWav($"{chart.pathName}\\..\\temp2.wav", $"{chart.pathName}\\..\\3999-audio.wav", gen.iterations);
                     }
                 }
-            }
+            }*/
         }
 
         private float[] TimestampToSeconds(Chart chart, int startTimestamp, int endTimestamp)
