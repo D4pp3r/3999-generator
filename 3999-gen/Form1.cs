@@ -1127,7 +1127,7 @@ namespace _3999_gen
 
         public void OggToWav(string inPath, string outPath)
         {
-            using (FileStream fileIn = new FileStream($"{outPath}{inPath}", FileMode.Open))
+            using (FileStream fileIn = new FileStream(inPath, FileMode.Open))
             using (MemoryStream pcmStream = new MemoryStream())
             {
                 OpusDecoder decoder = OpusDecoder.Create(48000, 1);
@@ -1147,7 +1147,7 @@ namespace _3999_gen
                 pcmStream.Position = 0;
                 var wavStream = new RawSourceWaveStream(pcmStream, new WaveFormat(48000, 1));
                 var sampleProvider = wavStream.ToSampleProvider();
-                WaveFileWriter.CreateWaveFile16($"{outPath}{inPath}", sampleProvider);
+                WaveFileWriter.CreateWaveFile16(outPath, sampleProvider);
             }
         }
 
