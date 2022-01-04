@@ -158,6 +158,10 @@ namespace _3999_gen
                 if (tickFlag)
                 {
                     tickB = section.timestamp;
+                    if(tickB == chart.lastTimeStamp)
+                    {
+                        tickB = chart.lastTimeStamp + (4 * chart.ticksPerQuarterNote);
+                    }
                     break;
                 }
             }
