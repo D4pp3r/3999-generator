@@ -249,16 +249,19 @@ namespace _3999_gen
                 {
                     if(chart.MetaData["MusicStream"].Contains(".wav"))
                     {
-
+                        AudioUtils converter = new AudioUtils();
+                        WavFileUtils trimmer = new WavFileUtils();
+                        trimmer.TrimWavFile($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", seconds[0], seconds[1]);
+                        trimmer.MultiplyWav($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\song.wav", gen.iterations);
                     }
 
                     else
                     {
                         AudioUtils converter = new AudioUtils();
                         WavFileUtils trimmer = new WavFileUtils();
-                        converter.ConvertToWav($"{chart.pathName}\\..\\{chart.MetaData["MusicStream"]}", $"{chart.pathName}\\..\\temp.wav");
-                        trimmer.TrimWavFile($"{chart.pathName}\\..\\temp.wav", $"{chart.pathName}\\..\\temp2.wav", seconds[0], seconds[1]);
-                        trimmer.MultiplyWav($"{chart.pathName}\\..\\temp2.wav", $"{chart.pathName}\\..\\3999-audio.wav", gen.iterations);
+                        converter.ConvertToWav($"{chart.pathName}\\..\\{chart.MetaData["MusicStream"]}", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav");
+                        trimmer.TrimWavFile($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", seconds[0], seconds[1]);
+                        trimmer.MultiplyWav($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\song.wav", gen.iterations);
                     }
                 }
             }
@@ -1085,21 +1088,10 @@ namespace _3999_gen
                 }
             }
 
-            else if (fileFormat == ".ogg")
+            else if (fileFormat == ".ogg" || fileFormat == ".opus")
             {
-                using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new VorbisWaveReader(inputStream.BaseStream)))
-                using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
-                {
-                    byte[] bytes = new byte[waveStream.Length];
-                    waveStream.Read(bytes, 0, (int)waveStream.Length);
-
-                    for (int i = 0; i < iterations; i++)
-                    {
-                        waveFileWriter.Write(bytes, 0, bytes.Length);
-                    }
-
-                    waveFileWriter.Flush();
-                }
+                WavFileUtils trimmer = new WavFileUtils();
+                trimmer.OggToWav(this.SourcePath, this.DestinationPath);
             }
 
             else
