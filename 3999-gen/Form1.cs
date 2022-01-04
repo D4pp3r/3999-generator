@@ -767,7 +767,7 @@ namespace _3999_gen
         public List<NoteEvent> GetSection(int tickA, int tickB, List<ChartEvent> eventList)
         {
             List<NoteEvent> notes = new List<NoteEvent>();
-            foreach (ChartEvent e in eventList.FindAll(x => x.eventType == "N" && x.timestamp >= tickA && x.timestamp < tickB))
+            foreach (ChartEvent e in eventList.FindAll(x => x.eventType == "N" && x.timestamp >= tickA && x.timestamp <= tickB))
             {
                 notes.Add(e as NoteEvent);
             }
