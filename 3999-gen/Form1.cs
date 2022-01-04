@@ -1149,7 +1149,7 @@ namespace _3999_gen
 
         public void OggToWav(string inPath, string outPath)
         {
-            using (FileStream fileIn = new FileStream(inPath, FileMode.Open))
+            using (FileStream fileIn = new FileStream(inPath, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (MemoryStream pcmStream = new MemoryStream())
             {
                 OpusDecoder decoder = OpusDecoder.Create(48000, 1);
