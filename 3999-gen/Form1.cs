@@ -231,45 +231,7 @@ namespace _3999_gen
 
 
             string parentDir = $"{chart.pathName}\\..\\..\\";
-
-            int numNotes = 3999;
-            if (rdoBtn3999.Checked)
-            {
-                numNotes = 3999;
-            }
-
-            else if (rdoBtnCustom.Checked)
-            {
-                numNotes = int.Parse(txtBoxNoteCount.Text);
-            }
-
-            else if (rdoBtnIteration.Checked)
-            {
-                numNotes = 3999;
-            }
-
-
-
-            
-
-            if (rdoBtnCustom.Checked)
-            {
-                if (!Int32.TryParse(txtBoxNoteCount.Text, out numNotes) || numNotes <= 0)
-                {
-                    MessageBox.Show("Not a valid note count, to the pokey with you.");
-                    return;
-                }
-            }
-            else if (rdoBtnIteration.Checked)
-            {
-                int numIterations = 0;
-                if (!Int32.TryParse(txtBoxLoopCount.Text, out numIterations) || numIterations <= 0)
-                {
-                    MessageBox.Show("Not a valid note count, to the pokey with you.");
-                    return;
-                }
-                numNotes = numIterations * chart.NumNotesDuration(tickA, tickB, chart.ExpertData);
-            }
+            int numNotes = CalculateNumNotes();
 
             string newDir, sectionA, sectionB;
             SetNewDirectoryName(parentDir, numNotes, out newDir, out sectionA, out sectionB);
@@ -283,6 +245,8 @@ namespace _3999_gen
             ChartGenerator gen = new ChartGenerator(chart);
             gen.Generate(numNotes, tickA, tickB, sectionA, sectionB, newDir);
 
+            // Force to fall through here rather than commenting everything out.
+            // TODO: fix this when we actually know a better way of checking for audio files.
             if (true || chart.MetaData["MusicStream"] is null)
             {
 
@@ -313,6 +277,32 @@ namespace _3999_gen
             }
 
             MessageBox.Show("HOLY FUCK !!!!", "YOU ARE WINNER!");
+        }
+
+        private int CalculateNumNotes()
+        {
+            int numNotes = 3999;
+            if (rdoBtnCustom.Checked)
+            {
+                numNotes = int.Parse(txtBoxNoteCount.Text);
+                if (!Int32.TryParse(txtBoxNoteCount.Text, out numNotes) || numNotes <= 0)
+                {
+                    MessageBox.Show("Not a valid note count, to the pokey with you.");
+                    Application.Exit();
+                }
+            }
+            else if (rdoBtnIteration.Checked)
+            {
+                int numIterations = 0;
+                if (!Int32.TryParse(txtBoxLoopCount.Text, out numIterations) || numIterations <= 0)
+                {
+                    MessageBox.Show("Not a valid note count, to the pokey with you.");
+                    Application.Exit();
+                }
+                numNotes = numIterations * chart.NumNotesDuration(tickA, tickB, chart.ExpertData);
+            }
+
+            return numNotes;
         }
 
         private void SetNewDirectoryName(string parentDir, int numNotes, out string newDir, out string sectionA, out string sectionB)
@@ -367,6 +357,22 @@ namespace _3999_gen
             float[] output = new float[] { tickStart / resolution * 60 / bpm, tickEnd / resolution * 60 / bpm };
 
             return output;
+        }
+
+        private void rdoBtnCustom_CheckedChanged(object sender, EventArgs e)
+        {
+            txtBoxLoopCount.Text = "";
+        }
+
+        private void rdoBtnIteration_CheckedChanged(object sender, EventArgs e)
+        {
+            txtBoxNoteCount.Text = "";
+        }
+
+        private void rdoBtn3999_CheckedChanged(object sender, EventArgs e)
+        {
+            txtBoxNoteCount.Text = "";
+            txtBoxLoopCount.Text = "";
         }
     }
 
@@ -819,7 +825,7 @@ namespace _3999_gen
         public int NumNotesDuration(int tickA, int tickB, List<ChartEvent> eventList)
         {
             int numNotes = 0;
-            foreach(NoteEvent n in GetSection(tickA, tickB, eventList).FindAll(x => x.isNewNote))
+            foreach(NoteEvent n in GetSection(tickA, tickB-1, eventList).FindAll(x => x.isNewNote))
             {
                 numNotes++;
             }
@@ -924,7 +930,7 @@ namespace _3999_gen
             this.startSection = startSection;
             this.endSection = endSection;
 
-            ExpertNotes = Chart.GetSection(startTimestamp, endTimestamp, Chart.ExpertData);
+            ExpertNotes = Chart.GetSection(startTimestamp, endTimestamp-1, Chart.ExpertData);
             sectionLength = Chart.NumNewNotes(ExpertNotes);
             
             if(sectionLength == 0 && MessageBox.Show("cmon bruh") == DialogResult.OK)

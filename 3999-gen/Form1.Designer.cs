@@ -118,6 +118,7 @@
             this.rdoBtn3999.TabStop = true;
             this.rdoBtn3999.Text = "3999 Notes";
             this.rdoBtn3999.UseVisualStyleBackColor = true;
+            this.rdoBtn3999.CheckedChanged += new System.EventHandler(this.rdoBtn3999_CheckedChanged);
             // 
             // rdoBtnCustom
             // 
@@ -128,6 +129,7 @@
             this.rdoBtnCustom.TabIndex = 6;
             this.rdoBtnCustom.Text = "Number of Notes";
             this.rdoBtnCustom.UseVisualStyleBackColor = true;
+            this.rdoBtnCustom.CheckedChanged += new System.EventHandler(this.rdoBtnCustom_CheckedChanged);
             // 
             // rdoBtnIteration
             // 
@@ -138,6 +140,7 @@
             this.rdoBtnIteration.TabIndex = 7;
             this.rdoBtnIteration.Text = "Number of Repeats";
             this.rdoBtnIteration.UseVisualStyleBackColor = true;
+            this.rdoBtnIteration.CheckedChanged += new System.EventHandler(this.rdoBtnIteration_CheckedChanged);
             // 
             // grpBoxStyle
             // 
@@ -237,13 +240,13 @@
             this.MinimumSize = new System.Drawing.Size(429, 336);
             this.Name = "Form1";
             this.Text = "3999 Generator";
+            this.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.Form1_KeyPress);
             this.grpBoxStyle.ResumeLayout(false);
             this.grpBoxStyle.PerformLayout();
             this.grpBoxSelection.ResumeLayout(false);
             this.grpBoxSelection.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
-            this.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.Form1_KeyPress);
 
         }
 
