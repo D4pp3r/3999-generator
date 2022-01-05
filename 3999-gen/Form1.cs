@@ -195,6 +195,8 @@ namespace _3999_gen
             if (chart is null) return;
             if (tickA == -1 || tickB == -1) return;
 
+            string parentDir = $"{chart.pathName}\\..\\..\\";
+
             if(rdoBtn3999.Checked)
             {
                 numNotes = 3999;
@@ -237,11 +239,21 @@ namespace _3999_gen
                 numNotes = numIterations * chart.NumNotesDuration(tickA, tickB, chart.ExpertData);
             }
 
-            
+            string newDir = $"{parentDir}{numNotes} {chart.chartName} (";
+            string sectionA = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
+            string sectionB = Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "");
+            if (sectionA != sectionB)
+            {
+                newDir += $"{sectionA} - {sectionB})";
+            }
+            else
+            {
+                newDir += $"{sectionA})";
+            }
 
-            gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}");
+            gen.Generate(numNotes, tickA, tickB, sectionA, sectionB, newDir);
 
-            if(chart.MetaData["MusicStream"] is null)
+            if(true || chart.MetaData["MusicStream"] is null)
             {
 
             }
@@ -255,17 +267,17 @@ namespace _3999_gen
                     {
                         AudioUtils converter = new AudioUtils();
                         WavFileUtils trimmer = new WavFileUtils();
-                        trimmer.TrimWavFile($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", seconds[0], seconds[1]);
-                        trimmer.MultiplyWav($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\song.wav", gen.iterations);
+                        trimmer.TrimWavFile($"{newDir}\\temp.wav", $"{newDir}\\temp2.wav", seconds[0], seconds[1]);
+                        trimmer.MultiplyWav($"{newDir}\\temp2.wav", $"{newDir}\\song.wav", gen.iterations);
                     }
 
                     else
                     {
                         AudioUtils converter = new AudioUtils();
                         WavFileUtils trimmer = new WavFileUtils();
-                        converter.ConvertToWav($"{chart.pathName}\\..\\{chart.MetaData["MusicStream"]}", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav");
-                        trimmer.TrimWavFile($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", seconds[0], seconds[1]);
-                        trimmer.MultiplyWav($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\song.wav", gen.iterations);
+                        converter.ConvertToWav($"{newDir}{chart.MetaData["MusicStream"]}", $"{newDir}\\temp.wav");
+                        trimmer.TrimWavFile($"{newDir}\\temp.wav", $"{newDir}\\temp2.wav", seconds[0], seconds[1]);
+                        trimmer.MultiplyWav($"{newDir}\\temp2.wav", $"{newDir}\\song.wav", gen.iterations);
                     }
                 }
             }
@@ -859,8 +871,9 @@ namespace _3999_gen
             this.endTimestamp = endTimestamp;
             this.startSection = startSection;
             this.endSection = endSection;
-            this.ExpertNotes = Chart.GetSection(startTimestamp, endTimestamp, Chart.ExpertData);
-            this.sectionLength = Chart.NumNewNotes(this.ExpertNotes);
+
+            ExpertNotes = Chart.GetSection(startTimestamp, endTimestamp, Chart.ExpertData);
+            sectionLength = Chart.NumNewNotes(ExpertNotes);
             
             if(sectionLength == 0 && MessageBox.Show("cmon bruh") == DialogResult.OK)
             {
@@ -881,6 +894,17 @@ namespace _3999_gen
             GenerateSyncData(iterations);
             GenerateEventData();
             GenerateExpertChart(iterations);
+
+            string songName = String.Empty;
+            if(startSection != endSection)
+            {
+                songName = $"{numNotes} {Chart.chartName} ({startSection} - {endSection})";
+            }
+            else
+            {
+                songName = $"{numNotes} {Chart.chartName} ({startSection})";
+            }
+            
 
             bool exists = System.IO.Directory.Exists(path);
 
@@ -903,14 +927,7 @@ namespace _3999_gen
                 {
                     if (line.Trim().ToLower().StartsWith("name"))
                     {
-                        if(startSection != endSection)
-                        {
-                            writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection} - {endSection}");
-                        }
-                        else
-                        {
-                            writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection})");
-                        }
+                        writer.WriteLine($"Name = {songName}");
                         continue;
                     }
                     writer.WriteLine(line);
