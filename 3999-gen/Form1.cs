@@ -69,16 +69,49 @@ namespace _3999_gen
 
         private void InitComboBoxes()
         {
-            Graphics g = this.CreateGraphics();
-            Rectangle rectangle = new Rectangle();
-            PaintEventArgs e = new PaintEventArgs(g, rectangle);
+            PaintEventArgs e = GetPaintEventArgs();
 
             // add sections to the drop-down
-            int i = 1;
-            float maxWidth = 0f;
-            Font font = cmboBoxSection.Font;
-            SizeF stringSize = new SizeF();
-            List<string> sectionLists = new List<string>();
+            int i;
+            float maxWidth;
+            Font font;
+            SizeF stringSize;
+            List<string> sectionLists;
+            GenerateSectionLists(out i, out maxWidth, out font, out stringSize, out sectionLists);
+            if (sectionLists.Count == 0) return;
+            foreach (string section in sectionLists)
+            {
+                string curSection = StripHTML($"{i}: {section}");
+                stringSize = e.Graphics.MeasureString(curSection, font);
+                maxWidth = checkMaxWidth(maxWidth, stringSize);
+                cmboBoxSection.Items.Add(curSection);
+                cmboBoxSection2.Items.Add(curSection);
+                i++;
+            }
+            cmboBoxSection.SelectedIndex = 0;
+            cmboBoxSection2.SelectedIndex = 0;
+        }
+
+        private float checkMaxWidth(float maxWidth, SizeF stringSize)
+        {
+            if (stringSize.Width > maxWidth)
+            {
+                float newWidth = stringSize.Width + 10;
+                cmboBoxSection.DropDownWidth = Convert.ToInt32(newWidth);
+                cmboBoxSection2.DropDownWidth = Convert.ToInt32(newWidth);
+                maxWidth = stringSize.Width;
+            }
+
+            return maxWidth;
+        }
+
+        private void GenerateSectionLists(out int i, out float maxWidth, out Font font, out SizeF stringSize, out List<string> sectionLists)
+        {
+            i = 1;
+            maxWidth = 0f;
+            font = cmboBoxSection.Font;
+            stringSize = new SizeF();
+            sectionLists = new List<string>();
             foreach (GlobalEvent globalEvent in chart.EventsData)
             {
                 if (globalEvent.eventType == "section")
@@ -88,24 +121,14 @@ namespace _3999_gen
                     sectionLists.Add(sectionEvent.sectionName.Replace('_', ' ').Trim());
                 }
             }
-            if (sectionLists.Count == 0) return;
-            foreach (string section in sectionLists)
-            {
-                string curSection = StripHTML($"{i}: {section}");
-                stringSize = e.Graphics.MeasureString(curSection, font);
-                if (stringSize.Width > maxWidth)
-                {
-                    float newWidth = stringSize.Width + 10;
-                    cmboBoxSection.DropDownWidth = Convert.ToInt32(newWidth);
-                    cmboBoxSection2.DropDownWidth = Convert.ToInt32(newWidth);
-                    maxWidth = stringSize.Width;
-                }
-                cmboBoxSection.Items.Add(curSection);
-                cmboBoxSection2.Items.Add(curSection);
-                i++;
-            }
-            cmboBoxSection.SelectedIndex = 0;
-            cmboBoxSection2.SelectedIndex = 0;
+        }
+
+        private PaintEventArgs GetPaintEventArgs()
+        {
+            Graphics g = this.CreateGraphics();
+            Rectangle rectangle = new Rectangle();
+            PaintEventArgs e = new PaintEventArgs(g, rectangle);
+            return e;
         }
 
         private void cmboBoxSection_SelectedIndexChanged(object sender, EventArgs e)
@@ -131,15 +154,11 @@ namespace _3999_gen
         {
             if (chart is null) return;
 
-            if(cmboBoxSection2.SelectedIndex < cmboBoxSection.SelectedIndex)
+            if (cmboBoxSection2.SelectedIndex < cmboBoxSection.SelectedIndex)
             {
                 cmboBoxSection2.SelectedIndex = cmboBoxSection.SelectedIndex;
                 return;
             }
-
-            string curSection = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
-
-            bool tickFlag = false;
 
             int index = cmboBoxSection2.SelectedIndex + 1;
             if (index == cmboBoxSection2.Items.Count)
@@ -147,6 +166,13 @@ namespace _3999_gen
                 tickB = chart.lastTimeStamp;
             }
 
+            SetTickB(index);
+
+        }
+
+        private void SetTickB(int index)
+        {
+            bool tickFlag = false;
             foreach (GlobalEvent globalEvent in chart.EventsData.FindAll(x => x.eventType == "section"))
             {
 
@@ -158,51 +184,61 @@ namespace _3999_gen
                 if (tickFlag)
                 {
                     tickB = section.timestamp;
-                    if(tickB == chart.lastTimeStamp)
+                    if (tickB == chart.lastTimeStamp)
                     {
                         tickB = chart.lastTimeStamp + (4 * chart.ticksPerQuarterNote);
                     }
                     break;
                 }
             }
-
         }
 
         void Form1_KeyPress(object sender, KeyPressEventArgs e)
         {
             funnycode.Enqueue(e.KeyChar);
             string curstring = new string(funnycode.ToArray());
-            if (curstring == "oboyoboy" || curstring == "54535453")
+            bool cheat = false;
+            string message = string.Empty;
+            switch(curstring)
             {
-                if (MessageBox.Show("Hyperspeed Unlocked!") == DialogResult.OK)
-                {
-                    Application.Exit();
-                }
+                case var x when x == "oboyoboy" || x == "54535453":
+                    cheat = true;
+                    message = "Hyperspeed Unlocked!";
+                    break;
+                case var x when x == "borm tim":
+                    cheat = true;
+                    message = "Get your BormoTime Guitar from bormotime.com today!";
+                    break;
             }
 
-            else if (curstring == "borm tim")
+            if(cheat && MessageBox.Show(message) == DialogResult.OK)
             {
-                if (MessageBox.Show("Get your BormoTime Guitar from bormotime.com today!") == DialogResult.OK)
-                {
-                    Application.Exit();
-                }
+                Application.Exit();
             }
 
         }
+
+        private string ReplaceInvalidChars(string filename)
+        {
+            return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
+        }
+
         private void btnGenerate_Click(object sender, EventArgs e)
         {
-            int numNotes = 3999;
             if (chart is null) return;
             if (tickA == -1 || tickB == -1) return;
 
+
+
             string parentDir = $"{chart.pathName}\\..\\..\\";
 
-            if(rdoBtn3999.Checked)
+            int numNotes = 3999;
+            if (rdoBtn3999.Checked)
             {
                 numNotes = 3999;
             }
 
-            else if(rdoBtnCustom.Checked)
+            else if (rdoBtnCustom.Checked)
             {
                 numNotes = int.Parse(txtBoxNoteCount.Text);
             }
@@ -212,13 +248,9 @@ namespace _3999_gen
                 numNotes = 3999;
             }
 
-            ChartGenerator gen = new ChartGenerator(chart);
 
-            if (rdoBtnSong.Checked)
-            {
-                tickA = 0;
-                tickB = chart.lastTimeStamp + chart.ticksPerQuarterNote*4;
-            }
+
+            
 
             if (rdoBtnCustom.Checked)
             {
@@ -239,31 +271,29 @@ namespace _3999_gen
                 numNotes = numIterations * chart.NumNotesDuration(tickA, tickB, chart.ExpertData);
             }
 
-            string newDir = $"{parentDir}{numNotes} {chart.chartName} (";
-            string sectionA = Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "");
-            string sectionB = Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "");
-            if (sectionA != sectionB)
+            string newDir, sectionA, sectionB;
+            SetNewDirectoryName(parentDir, numNotes, out newDir, out sectionA, out sectionB);
+
+            if (rdoBtnSong.Checked)
             {
-                newDir += $"{sectionA} - {sectionB})";
-            }
-            else
-            {
-                newDir += $"{sectionA})";
+                sectionA = StripSectionIndex(cmboBoxSection.Items[0] as string);
+                sectionB = StripSectionIndex(cmboBoxSection2.Items[cmboBoxSection2.Items.Count - 1] as string);
             }
 
+            ChartGenerator gen = new ChartGenerator(chart);
             gen.Generate(numNotes, tickA, tickB, sectionA, sectionB, newDir);
 
-            if(true || chart.MetaData["MusicStream"] is null)
+            if (true || chart.MetaData["MusicStream"] is null)
             {
 
             }
 
             else
             {
-                float[] seconds = TimestampToSeconds(chart, tickA, tickB + (chart.ticksPerQuarterNote/4));
+                float[] seconds = TimestampToSeconds(chart, tickA, tickB + (chart.ticksPerQuarterNote / 4));
                 if (seconds != new float[] { -1, -1 })
                 {
-                    if(chart.MetaData["MusicStream"].Contains(".wav"))
+                    if (chart.MetaData["MusicStream"].Contains(".wav"))
                     {
                         AudioUtils converter = new AudioUtils();
                         WavFileUtils trimmer = new WavFileUtils();
@@ -283,6 +313,26 @@ namespace _3999_gen
             }
 
             MessageBox.Show("HOLY FUCK !!!!", "YOU ARE WINNER!");
+        }
+
+        private void SetNewDirectoryName(string parentDir, int numNotes, out string newDir, out string sectionA, out string sectionB)
+        {
+            newDir = $"{parentDir}{numNotes} {chart.chartName} (";
+            sectionA = StripSectionIndex(cmboBoxSection.Text);
+            sectionB = StripSectionIndex(cmboBoxSection2.Text);
+            if (sectionA != sectionB)
+            {
+                newDir += $"{ReplaceInvalidChars(sectionA)} - {ReplaceInvalidChars(sectionB)})";
+            }
+            else
+            {
+                newDir += $"{ReplaceInvalidChars(sectionA)})";
+            }
+        }
+
+        private string StripSectionIndex(string str)
+        {
+            return Regex.Replace(str, "[0-9]+:[ ]", "");
         }
 
         private float[] TimestampToSeconds(Chart chart, int startTimestamp, int endTimestamp)
@@ -864,6 +914,8 @@ namespace _3999_gen
             this.timestamps = new List<string>();
         }
 
+        
+
         public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path)
         {
             this.numNotes = numNotes;
@@ -904,7 +956,8 @@ namespace _3999_gen
             {
                 songName = $"{numNotes} {Chart.chartName} ({startSection})";
             }
-            
+
+            Console.WriteLine(path);
 
             bool exists = System.IO.Directory.Exists(path);
 
@@ -928,6 +981,11 @@ namespace _3999_gen
                     if (line.Trim().ToLower().StartsWith("name"))
                     {
                         writer.WriteLine($"Name = {songName}");
+                        continue;
+                    }
+                    else if(line.Trim().ToLower().StartsWith("charter"))
+                    {
+                        writer.WriteLine($"Charter = {Chart.charter}, RandomDays, BormoTime"); 
                         continue;
                     }
                     writer.WriteLine(line);
