@@ -8,19 +8,12 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
-using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
-using NVorbis;
-using NAudio.Vorbis;
 using System.Text.RegularExpressions;
-using Concentus;
-using Concentus.Oggfile;
-using Concentus.Structs;
+using Xabe.FFmpeg;
+using System.Diagnostics;
 
 namespace _3999_gen
 {
-
-
     public partial class Form1 : Form
     {
 
@@ -131,7 +124,7 @@ namespace _3999_gen
         {
             if (chart is null) return;
 
-            if(cmboBoxSection2.SelectedIndex < cmboBoxSection.SelectedIndex)
+            if (cmboBoxSection2.SelectedIndex < cmboBoxSection.SelectedIndex)
             {
                 cmboBoxSection2.SelectedIndex = cmboBoxSection.SelectedIndex;
                 return;
@@ -158,7 +151,7 @@ namespace _3999_gen
                 if (tickFlag)
                 {
                     tickB = section.timestamp;
-                    if(tickB == chart.lastTimeStamp)
+                    if (tickB == chart.lastTimeStamp)
                     {
                         tickB = chart.lastTimeStamp + (4 * chart.ticksPerQuarterNote);
                     }
@@ -189,18 +182,18 @@ namespace _3999_gen
             }
 
         }
-        private void btnGenerate_Click(object sender, EventArgs e)
+        private async void btnGenerate_Click(object sender, EventArgs e)
         {
             int numNotes = 3999;
             if (chart is null) return;
             if (tickA == -1 || tickB == -1) return;
 
-            if(rdoBtn3999.Checked)
+            if (rdoBtn3999.Checked)
             {
                 numNotes = 3999;
             }
 
-            else if(rdoBtnCustom.Checked)
+            else if (rdoBtnCustom.Checked)
             {
                 numNotes = int.Parse(txtBoxNoteCount.Text);
             }
@@ -215,7 +208,7 @@ namespace _3999_gen
             if (rdoBtnSong.Checked)
             {
                 tickA = 0;
-                tickB = chart.lastTimeStamp + chart.ticksPerQuarterNote*4;
+                tickB = chart.lastTimeStamp + chart.ticksPerQuarterNote * 4;
             }
 
             if (rdoBtnCustom.Checked)
@@ -237,49 +230,45 @@ namespace _3999_gen
                 numNotes = numIterations * chart.NumNotesDuration(tickA, tickB, chart.ExpertData);
             }
 
-            
 
-            gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}");
 
-            if(chart.MetaData["MusicStream"] is null)
+            gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}");
+
+            if (chart.MetaData["MusicStream"] is null)
             {
 
             }
 
             else
             {
-                float[] seconds = TimestampToSeconds(chart, tickA, tickB + (chart.ticksPerQuarterNote/4));
+                float[] seconds = TimestampToSeconds(chart, tickA, tickB/* + (chart.ticksPerQuarterNote / 4)*/);
                 if (seconds != new float[] { -1, -1 })
                 {
-                    if(chart.MetaData["MusicStream"].Contains(".wav"))
-                    {
-                        AudioUtils converter = new AudioUtils();
-                        WavFileUtils trimmer = new WavFileUtils();
-                        trimmer.TrimWavFile($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", seconds[0], seconds[1]);
-                        trimmer.MultiplyWav($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\song.wav", gen.iterations);
-                    }
-
-                    else
-                    {
-                        AudioUtils converter = new AudioUtils();
-                        WavFileUtils trimmer = new WavFileUtils();
-                        converter.ConvertToWav($"{chart.pathName}\\..\\{chart.MetaData["MusicStream"]}", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav");
-                        trimmer.TrimWavFile($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", seconds[0], seconds[1]);
-                        trimmer.MultiplyWav($"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\temp2.wav", $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}\\song.wav", gen.iterations);
-                    }
+                    await AudioGenerator.Generate("\"" + filePath.Substring(0, filePath.Length-11) + chart.MetaData["MusicStream"] + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations);
                 }
             }
 
             MessageBox.Show("HOLY FUCK !!!!", "YOU ARE WINNER!");
         }
 
-        private float[] TimestampToSeconds(Chart chart, int startTimestamp, int endTimestamp)
+        private float[] TimestampToSeconds(Chart chart, float startTimestamp, float endTimestamp)
         {
             int resolution = chart.ticksPerQuarterNote;
-            int bpm = 0;
-            int tickStart = 0;
-            int tickEnd = 0;
+            float bpm = 0;
+            float lastBpm = 0;
+            float tickStart = 0;
+            float tickEnd = 0;
             bool shit = false;
+            bool first = true;
+            float startSeconds = 0;
+            float endSeconds = 0;
+            float endDiff = 0;
+            int lastBPMTimestamp = 0;
+
+            float secondsBeforeStart = 0;
+
+            tickStart = startTimestamp;
+            tickEnd = endTimestamp;
 
             foreach (SyncEvent sync in chart.SyncData)
             {
@@ -287,22 +276,39 @@ namespace _3999_gen
                 {
                     BPMEvent bpmevent = sync as BPMEvent;
 
-                    if (startTimestamp < bpmevent.timestamp && endTimestamp > bpmevent.timestamp)
+                    if(first)
                     {
-                        shit = true;
-                        return new float[] { -1, -1 };
+                        bpm = bpmevent.BPM / 1000.0f;
+                        lastBpm = bpmevent.BPM / 1000.0f;
+                        lastBPMTimestamp = bpmevent.timestamp;
+
+                        first = false;
                     }
 
-                    else if (!shit && bpmevent.timestamp <= startTimestamp)
+                    if(bpmevent.timestamp <= tickStart)
                     {
-                        bpm = bpmevent.BPM / 1000;
-                        tickStart = startTimestamp;
-                        tickEnd = endTimestamp;
+                        secondsBeforeStart += ((((bpmevent.timestamp - lastBPMTimestamp) / resolution) * 60) / lastBpm);
+                        lastBPMTimestamp = bpmevent.timestamp;
+                        lastBpm = bpmevent.BPM / 1000;
+                    }
+
+                    else if(bpmevent.timestamp < tickEnd)
+                    {
+                        shit = true;
                     }
                 }
             }
 
-            float[] output = new float[] { tickStart / resolution * 60 / bpm, tickEnd / resolution * 60 / bpm };
+            startSeconds = ((((tickStart - lastBPMTimestamp) / resolution) * 60) / bpm) + secondsBeforeStart;
+
+            if(!shit)
+            {
+                endDiff = ((((tickEnd - tickStart) / resolution) * 60) / bpm);
+
+                endSeconds = endDiff + startSeconds;
+            }
+
+            float[] output = new float[] { startSeconds, endSeconds };
 
             return output;
         }
@@ -711,7 +717,7 @@ namespace _3999_gen
                                 else
                                 {
                                     this.numNotes = 1;
-                                    if(ExpertData.Count == 0)
+                                    if (ExpertData.Count == 0)
                                     {
                                         isNewNote = true;
                                     }
@@ -757,7 +763,7 @@ namespace _3999_gen
         public int NumNotesDuration(int tickA, int tickB, List<ChartEvent> eventList)
         {
             int numNotes = 0;
-            foreach(NoteEvent n in GetSection(tickA, tickB, eventList).FindAll(x => x.isNewNote))
+            foreach (NoteEvent n in GetSection(tickA, tickB, eventList).FindAll(x => x.isNewNote))
             {
                 numNotes++;
             }
@@ -777,7 +783,7 @@ namespace _3999_gen
         public int NumNewNotes(List<NoteEvent> noteList)
         {
             int i = 0;
-            foreach(NoteEvent n in noteList.FindAll(x => x.isNewNote))
+            foreach (NoteEvent n in noteList.FindAll(x => x.isNewNote))
             {
                 i++;
             }
@@ -787,9 +793,9 @@ namespace _3999_gen
         public NoteEvent GetNextNote(int timestamp, List<ChartEvent> eventList)
         {
             NoteEvent n = null;
-            foreach(ChartEvent e in eventList.FindAll(x => x.eventType == "N"))
+            foreach (ChartEvent e in eventList.FindAll(x => x.eventType == "N"))
             {
-                if(e.timestamp >= timestamp)
+                if (e.timestamp >= timestamp)
                 {
                     n = e as NoteEvent;
                     break;
@@ -861,8 +867,8 @@ namespace _3999_gen
             this.endSection = endSection;
             this.ExpertNotes = Chart.GetSection(startTimestamp, endTimestamp, Chart.ExpertData);
             this.sectionLength = Chart.NumNewNotes(this.ExpertNotes);
-            
-            if(sectionLength == 0 && MessageBox.Show("cmon bruh") == DialogResult.OK)
+
+            if (sectionLength == 0 && MessageBox.Show("cmon bruh") == DialogResult.OK)
             {
                 Application.Exit();
             }
@@ -884,7 +890,7 @@ namespace _3999_gen
 
             bool exists = System.IO.Directory.Exists(path);
 
-            if(!exists)
+            if (!exists)
             {
                 System.IO.Directory.CreateDirectory(path);
             }
@@ -903,7 +909,7 @@ namespace _3999_gen
                 {
                     if (line.Trim().ToLower().StartsWith("name"))
                     {
-                        if(startSection != endSection)
+                        if (startSection != endSection)
                         {
                             writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection} - {endSection}");
                         }
@@ -1020,7 +1026,7 @@ namespace _3999_gen
                     if (n.isNewNote)
                     {
                         newNoteCount++;
-                        if(newNoteCount > numNotes)
+                        if (newNoteCount > numNotes)
                         {
                             break;
                         }
@@ -1038,71 +1044,18 @@ namespace _3999_gen
         }
     }
 
-    public class AudioUtils
+    public static class AudioGenerator
     {
-        public string SourcePath { get; private set; }
-
-        public string DestinationPath { get; private set; }
-
-        public AudioUtils()
+        public static async Task Generate(string path, string output, float startSeconds, float endSeconds, int iterations)
         {
+            var mediaInfo = await FFmpeg.GetMediaInfo(path);
+
+            var conversionResult = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-i {path} -ss {startSeconds} -to {endSeconds} -c copy C:/Temp/temp.mp3").Start();
+
+            var conversionResult2 = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-stream_loop {iterations} -i C:/Temp/temp.mp3 -c copy {output}").Start();
 
         }
 
-        public void ConvertToWav(string sourcePath, string destPath)
-        {
-            this.SourcePath = sourcePath;
-            this.DestinationPath = destPath;
-
-            ConstructWav(sourcePath, destPath, 1);
-        }
-
-        public void ConvertToWavAndMultiply(string sourcePath, string destPath, int iterations)
-        {
-            this.SourcePath = sourcePath;
-            this.DestinationPath = destPath;
-
-            ConstructWav(sourcePath, destPath, iterations);
-        }
-
-        private void ConstructWav(string sourcePath, string destPath, int iterations)
-        {
-            WaveFormat waveFormat = new WaveFormat(8000, 8, 2);
-            string outputPath = destPath;
-
-            string fileFormat = sourcePath.Substring(sourcePath.Length - 4);
-
-            StreamReader inputStream = new StreamReader(sourcePath);
-            StreamWriter outputStream = new StreamWriter(outputPath);
-
-            if (fileFormat == ".mp3")
-            {
-                using (WaveStream waveStream = WaveFormatConversionStream.CreatePcmStream(new Mp3FileReader(inputStream.BaseStream)))
-                using (WaveFileWriter waveFileWriter = new WaveFileWriter(outputStream.BaseStream, waveStream.WaveFormat))
-                {
-                    byte[] bytes = new byte[waveStream.Length];
-                    waveStream.Read(bytes, 0, (int)waveStream.Length);
-
-                    for (int i = 0; i < iterations; i++)
-                    {
-                        waveFileWriter.Write(bytes, 0, bytes.Length);
-                    }
-
-                    waveFileWriter.Flush();
-                }
-            }
-
-            else if (fileFormat == ".ogg" || fileFormat == ".opus")
-            {
-                WavFileUtils trimmer = new WavFileUtils();
-                trimmer.OggToWav(this.SourcePath, this.DestinationPath);
-            }
-
-            else
-            {
-                MessageBox.Show("Unsupported Song Format");
-            }
-        }
     }
 
     public class LimitedQueue<T> : Queue<T>
@@ -1124,106 +1077,6 @@ namespace _3999_gen
         }
     }
 
-    public class WavFileUtils
-    {
-        public WavFileUtils()
-        {
 
-        }
-
-        public void TrimWavFile(string inPath, string outPath, float cutFromStart, float cutFromEnd)
-        {
-            using (WaveFileReader reader = new WaveFileReader(inPath))
-            {
-                using (WaveFileWriter writer = new WaveFileWriter(outPath, reader.WaveFormat))
-                {
-                    int bytesPerMillisecond = reader.WaveFormat.AverageBytesPerSecond / 1000;
-
-                    float startPos = cutFromStart * 1000 * bytesPerMillisecond;
-                    startPos = startPos - startPos % reader.WaveFormat.BlockAlign;
-
-                    float endBytes = cutFromEnd * 1000 * bytesPerMillisecond;
-                    endBytes = endBytes - endBytes % reader.WaveFormat.BlockAlign;
-                    float endPos = endBytes;
-
-                    TrimWavFile(reader, writer, startPos, endPos);
-                }
-            }
-        }
-
-        public void OggToWav(string inPath, string outPath)
-        {
-            using (FileStream fileIn = new FileStream(inPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (MemoryStream pcmStream = new MemoryStream())
-            {
-                OpusDecoder decoder = OpusDecoder.Create(48000, 1);
-                OpusOggReadStream oggIn = new OpusOggReadStream(decoder, fileIn);
-                while (oggIn.HasNextPacket)
-                {
-                    short[] packet = oggIn.DecodeNextPacket();
-                    if (packet != null)
-                    {
-                        for (int i = 0; i < packet.Length; i++)
-                        {
-                            var bytes = BitConverter.GetBytes(packet[i]);
-                            pcmStream.Write(bytes, 0, bytes.Length);
-                        }
-                    }
-                }
-                pcmStream.Position = 0;
-                var wavStream = new RawSourceWaveStream(pcmStream, new WaveFormat(48000, 1));
-                var sampleProvider = wavStream.ToSampleProvider();
-                WaveFileWriter.CreateWaveFile16(outPath, sampleProvider);
-            }
-        }
-
-        public void MultiplyWav(string inPath, string outPath, int iterations)
-        {
-            using (WaveFileReader reader = new WaveFileReader(inPath))
-            {
-                using (WaveFileWriter writer = new WaveFileWriter(outPath, reader.WaveFormat))
-                {
-                    for (int i = 0; i < iterations; i++)
-                    {
-                        reader.Position = 0;
-                        byte[] buffer = new byte[1024];
-
-                        while (reader.Position < reader.Length)
-                        {
-                            int bytesRequired = (int)(reader.Length - reader.Position);
-                            if (bytesRequired > 0)
-                            {
-                                int bytesToRead = Math.Min(bytesRequired, buffer.Length);
-                                int bytesRead = reader.Read(buffer, 0, bytesToRead);
-                                if (bytesRead > 0)
-                                {
-                                    writer.Write(buffer, 0, bytesRead);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private static void TrimWavFile(WaveFileReader reader, WaveFileWriter writer, float startPos, float endPos)
-        {
-            reader.Position = Math.Abs((int)startPos);
-            byte[] buffer = new byte[1024];
-            while (reader.Position < endPos)
-            {
-                int bytesRequired = (int)(endPos - reader.Position);
-                if (bytesRequired > 0)
-                {
-                    int bytesToRead = Math.Min(bytesRequired, buffer.Length);
-                    int bytesRead = reader.Read(buffer, 0, bytesToRead);
-                    if (bytesRead > 0)
-                    {
-                        writer.Write(buffer, 0, bytesRead);
-                    }
-                }
-            }
-        }
-    }
 
 }
