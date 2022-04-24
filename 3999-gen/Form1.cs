@@ -264,6 +264,8 @@ namespace _3999_gen
             float endSeconds = 0;
             float endDiff = 0;
             int lastBPMTimestamp = 0;
+            int shitTimestamp = 0;
+            float lastShitTimestamp = 0;
 
             float secondsBeforeStart = 0;
 
@@ -294,16 +296,37 @@ namespace _3999_gen
 
                     else if(bpmevent.timestamp < tickEnd)
                     {
-                        shit = true;
+                        if(!shit)
+                        {
+                            shit = true;
+                            bpm = lastBpm;
+                            lastShitTimestamp = tickStart;
+                        }
+
+                        else
+                        {
+                            lastShitTimestamp = bpmevent.timestamp;
+                        }
+
+                        endDiff += ((((bpmevent.timestamp - lastShitTimestamp) / resolution) * 60) / bpm);
+                        shitTimestamp = bpmevent.timestamp;
+                        bpm = bpmevent.BPM / 1000;
                     }
                 }
             }
 
-            startSeconds = ((((tickStart - lastBPMTimestamp) / resolution) * 60) / bpm) + secondsBeforeStart;
+            startSeconds = ((((tickStart - lastBPMTimestamp) / resolution) * 60) / lastBpm) + secondsBeforeStart + (chart.delay);
 
             if(!shit)
             {
-                endDiff = ((((tickEnd - tickStart) / resolution) * 60) / bpm);
+                endDiff = ((((tickEnd - tickStart) / resolution) * 60) / lastBpm);
+
+                endSeconds = endDiff + startSeconds;
+            }
+
+            else
+            {
+                endDiff += ((((tickEnd - shitTimestamp) / resolution) * 60) / bpm);
 
                 endSeconds = endDiff + startSeconds;
             }
@@ -483,6 +506,7 @@ namespace _3999_gen
         public string chartName { get; private set; }
         public string chartArtist { get; private set; }
         public string charter { get; private set; }
+        public float delay { get; private set; }
 
         public string pathName { get; private set; }
 
@@ -521,7 +545,7 @@ namespace _3999_gen
                 string[] songini = File.ReadAllLines($"{filename.Split(new[] { "notes.chart" }, StringSplitOptions.None)[0]}song.ini");
                 chartName = null; chartArtist = null; charter = null;
                 string frets = null;
-                bool hasSongName, hasSongArtist, hasSongCharter, hasFrets;
+                bool hasSongName, hasSongArtist, hasSongCharter, hasFrets, hasDelay;
                 foreach (string entry in songini)
                 {
                     string newEntry = Form1.StripHTML(entry);
@@ -529,10 +553,12 @@ namespace _3999_gen
                     hasSongArtist = newEntry.Trim().ToLower().StartsWith("artist");
                     hasSongCharter = newEntry.Trim().ToLower().StartsWith("charter");
                     hasFrets = newEntry.Trim().ToLower().StartsWith("frets");
+                    hasDelay = newEntry.Trim().ToLower().StartsWith("delay");
                     if (hasSongName) chartName = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasSongArtist) chartArtist = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasSongCharter) charter = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasFrets) frets = newEntry.Trim().Split('=')[1].Trim();
+                    else if (hasDelay) delay = int.Parse(newEntry.Trim().Split('=')[1].Trim())/1000;
                     iniData.Add(entry);
                 }
 
@@ -623,7 +649,10 @@ namespace _3999_gen
                         string key = curLine.Split('=')[0].Trim();
                         string value = curLine.Split('=')[1].Replace("\"", "").Trim();
                         if (key.Contains("Resolution")) ticksPerQuarterNote = Int32.Parse(value.Trim());
-                        MetaData.Add(key, value);
+                        if(!key.Contains("Offset"))
+                        {
+                            MetaData.Add(key, value);
+                        }
                     }
                     return;
 
@@ -919,7 +948,11 @@ namespace _3999_gen
                         }
                         continue;
                     }
-                    writer.WriteLine(line);
+
+                    if(!line.Trim().ToLower().StartsWith("delay"))
+                    {
+                        writer.WriteLine(line);
+                    }
                 }
             }
         }
@@ -1050,8 +1083,18 @@ namespace _3999_gen
         {
             var mediaInfo = await FFmpeg.GetMediaInfo(path);
 
-            var conversionResult = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-i {path} -ss {startSeconds} -to {endSeconds} -c copy C:/Temp/temp.mp3").Start();
+            if (!path.Contains(".mp3"))
+            {
+                var mp3Conversion = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-i {path} -acodec libmp3lame C:/Temp/conversion.mp3").Start();
 
+                var conversionResult = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-i C:/Temp/conversion.mp3 -ss {startSeconds} -to {endSeconds} -c copy C:/Temp/temp.mp3").Start();
+            }
+
+            else
+            {
+                var conversionResult = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-i {path} -ss {startSeconds} -to {endSeconds} -c copy C:/Temp/temp.mp3").Start();
+            }
+            
             var conversionResult2 = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-stream_loop {iterations} -i C:/Temp/temp.mp3 -c copy {output}").Start();
 
         }
