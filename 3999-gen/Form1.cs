@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using System.IO;
 using System.Text.RegularExpressions;
 using Xabe.FFmpeg;
+using Xabe.FFmpeg.Downloader;
 using System.Diagnostics;
 
 namespace _3999_gen
@@ -30,6 +31,7 @@ namespace _3999_gen
         public Form1()
         {
             InitializeComponent();
+            FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official);
         }
 
         public static string StripHTML(string input)
