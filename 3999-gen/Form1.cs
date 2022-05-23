@@ -23,6 +23,8 @@ namespace _3999_gen
         private int tickA;
         private int tickB;
 
+        private bool kamikaze = false;
+
         private LimitedQueue<char> funnycode = new LimitedQueue<char>(8);
 
         public Form1()
@@ -150,10 +152,9 @@ namespace _3999_gen
                 }
                 if (tickFlag)
                 {
-                    tickB = section.timestamp;
-                    if (tickB == chart.lastTimeStamp)
+                    if (tickB != chart.lastTimeStamp)
                     {
-                        tickB = chart.lastTimeStamp + (4 * chart.ticksPerQuarterNote);
+                        tickB = section.timestamp;
                     }
                     break;
                 }
@@ -178,6 +179,25 @@ namespace _3999_gen
                 if (MessageBox.Show("Get your BormoTime Guitar from bormotime.com today!") == DialogResult.OK)
                 {
                     Application.Exit();
+                }
+            }
+
+            else if (curstring == "kamikaze")
+            {
+                if(kamikaze)
+                {
+                    if (MessageBox.Show("KAMIKAZE MODE DEACTIVATED") == DialogResult.OK)
+                    {
+                        kamikaze = false;
+                    }
+                }
+
+                else
+                {
+                    if (MessageBox.Show("KAMIKAZE MODE ACTIVATED") == DialogResult.OK)
+                    {
+                        kamikaze = true;
+                    }
                 }
             }
 
@@ -230,9 +250,8 @@ namespace _3999_gen
                 numNotes = numIterations * chart.NumNotesDuration(tickA, tickB, chart.ExpertData);
             }
 
-
-
-            gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}");
+            if(kamikaze) { gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_KAMIKAZE_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}", kamikaze); }
+            else { gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}", kamikaze); }
 
             if (chart.MetaData["MusicStream"] is null)
             {
@@ -244,11 +263,21 @@ namespace _3999_gen
                 float[] seconds = TimestampToSeconds(chart, tickA, tickB/* + (chart.ticksPerQuarterNote / 4)*/);
                 if (seconds != new float[] { -1, -1 })
                 {
-                    await AudioGenerator.Generate("\"" + filePath.Substring(0, filePath.Length-11) + chart.MetaData["MusicStream"] + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations);
+                    if (kamikaze) { await AudioGenerator.Generate("\"" + filePath.Substring(0, filePath.Length - 11) + chart.MetaData["MusicStream"] + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_KAMIKAZE_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations, kamikaze); }
+                    else { await AudioGenerator.Generate("\"" + filePath.Substring(0, filePath.Length - 11) + chart.MetaData["MusicStream"] + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations, kamikaze); }
                 }
             }
 
             MessageBox.Show("HOLY FUCK !!!!", "YOU ARE WINNER!");
+
+            System.IO.DirectoryInfo di = new DirectoryInfo("C:/Temp");
+            foreach (FileInfo file in di.GetFiles())
+            {
+                if (file.Extension == ".mp3")
+                {
+                    file.Delete();
+                }
+            }
         }
 
         private float[] TimestampToSeconds(Chart chart, float startTimestamp, float endTimestamp)
@@ -291,7 +320,7 @@ namespace _3999_gen
                     {
                         secondsBeforeStart += ((((bpmevent.timestamp - lastBPMTimestamp) / resolution) * 60) / lastBpm);
                         lastBPMTimestamp = bpmevent.timestamp;
-                        lastBpm = bpmevent.BPM / 1000;
+                        lastBpm = bpmevent.BPM / 1000.0f;
                     }
 
                     else if(bpmevent.timestamp < tickEnd)
@@ -303,14 +332,10 @@ namespace _3999_gen
                             lastShitTimestamp = tickStart;
                         }
 
-                        else
-                        {
-                            lastShitTimestamp = bpmevent.timestamp;
-                        }
-
                         endDiff += ((((bpmevent.timestamp - lastShitTimestamp) / resolution) * 60) / bpm);
                         shitTimestamp = bpmevent.timestamp;
-                        bpm = bpmevent.BPM / 1000;
+                        lastShitTimestamp = bpmevent.timestamp;
+                        bpm = bpmevent.BPM / 1000.0f;
                     }
                 }
             }
@@ -342,7 +367,7 @@ namespace _3999_gen
         public int timestamp { get; private set; }
         public string SyncGlobalOrChartEvent { get; private set; }
 
-        public string RawData { get; private set; }
+        public string RawData { get; set; }
 
         public TimestampedEvent(int newTimestamp, string eventType, string newData)
         {
@@ -867,6 +892,8 @@ namespace _3999_gen
 
         private int cutoffTimestamp;
 
+        private bool kamikaze;
+
         public Chart Chart { get; private set; }
 
         public int numNotes { get; private set; }
@@ -887,7 +914,7 @@ namespace _3999_gen
             this.timestamps = new List<string>();
         }
 
-        public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path)
+        public void Generate(int numNotes, int startTimestamp, int endTimestamp, string startSection, string endSection, string path, bool kamikaze)
         {
             this.numNotes = numNotes;
             this.startTimestamp = startTimestamp;
@@ -896,6 +923,7 @@ namespace _3999_gen
             this.endSection = endSection;
             this.ExpertNotes = Chart.GetSection(startTimestamp, endTimestamp, Chart.ExpertData);
             this.sectionLength = Chart.NumNewNotes(this.ExpertNotes);
+            this.kamikaze = kamikaze;
 
             if (sectionLength == 0 && MessageBox.Show("cmon bruh") == DialogResult.OK)
             {
@@ -940,11 +968,15 @@ namespace _3999_gen
                     {
                         if (startSection != endSection)
                         {
-                            writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection} - {endSection}");
+                            if (kamikaze) { writer.WriteLine($"Name = {numNotes} {Chart.chartName} KAMIKAZE ({startSection} - {endSection})"); }
+                            else { writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection} - {endSection})"); }
+                            
                         }
                         else
                         {
-                            writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection})");
+                            if (kamikaze) { writer.WriteLine($"Name = {numNotes} {Chart.chartName} KAMIKAZE ({startSection})"); }
+                            else { writer.WriteLine($"Name = {numNotes} {Chart.chartName} ({startSection})"); }
+                            
                         }
                         continue;
                     }
@@ -967,7 +999,8 @@ namespace _3999_gen
                 switch (key)
                 {
                     case var k when k == "Name":
-                        output.Add($" {key} = \"{numNotes} {Chart.chartName} ({startSection} - {endSection})\"");
+                        if(kamikaze) { output.Add($" {key} = \"{numNotes} {Chart.chartName} KAMIKAZE ({startSection} - {endSection})\""); }
+                        else { output.Add($" {key} = \"{numNotes} {Chart.chartName} ({startSection} - {endSection})\""); }
                         break;
                     case var k when k == "Artist":
                         output.Add($" {key} = \"{Chart.chartArtist}\"");
@@ -1024,7 +1057,19 @@ namespace _3999_gen
                     //    output.Add($" {newTimestamp} = {chartevent.eventType} {chartevent.RawData}");
                     //}
 
-                    output.Add($" {newTimestamp} = {chartevent.eventType} {chartevent.RawData}");
+                    if(kamikaze && chartevent.eventType == "B")
+                    {
+                        float speed = 1.00f + (((i + 1) * 5) / 100f);
+                        BPMEvent bpmevent = chartevent as BPMEvent;
+                        int bpm = bpmevent.BPM;
+
+                        output.Add($" {newTimestamp} = {chartevent.eventType} {bpm*speed}");
+                    }
+
+                    else
+                    {
+                        output.Add($" {newTimestamp} = {chartevent.eventType} {chartevent.RawData}");
+                    }
                 }
             }
 
@@ -1036,11 +1081,23 @@ namespace _3999_gen
             output.Add("[Events]");
             output.Add("{");
 
-            foreach (GlobalEvent chartevent in Chart.EventsData)
+            for (int iter = 0; iter < iterations; iter++)
             {
-                if (chartevent.timestamp >= startTimestamp && chartevent.timestamp < endTimestamp)
+                foreach (GlobalEvent chartevent in Chart.EventsData)
                 {
-                    output.Add($" {chartevent.timestamp - startTimestamp} = {chartevent.RawData}");
+                    if (chartevent.timestamp >= startTimestamp && chartevent.timestamp < endTimestamp)
+                    {
+                        int newTimestamp = chartevent.timestamp - startTimestamp + (iter * (endTimestamp - startTimestamp));
+                        if(chartevent.RawData.Contains("section"))
+                        {
+                            output.Add($" {newTimestamp} = {chartevent.RawData.Substring(0, chartevent.RawData.Length-1) + " - " + (iter+1) + "\""}");
+                        }
+                        
+                        else
+                        {
+                            output.Add($" {newTimestamp} = {chartevent.RawData}");
+                        }
+                    }
                 }
             }
 
@@ -1079,7 +1136,7 @@ namespace _3999_gen
 
     public static class AudioGenerator
     {
-        public static async Task Generate(string path, string output, float startSeconds, float endSeconds, int iterations)
+        public static async Task Generate(string path, string output, float startSeconds, float endSeconds, int iterations, bool kamikaze)
         {
             var mediaInfo = await FFmpeg.GetMediaInfo(path);
 
@@ -1095,8 +1152,33 @@ namespace _3999_gen
                 var conversionResult = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-i {path} -ss {startSeconds} -to {endSeconds} -c copy C:/Temp/temp.mp3").Start();
             }
             
-            var conversionResult2 = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-stream_loop {iterations} -i C:/Temp/temp.mp3 -c copy {output}").Start();
+            if(kamikaze)
+            {
+                List<string> conlist = new List<string>();
 
+                for(int x = 0; x<iterations; x++)
+                {
+                    float speed = 1.00f + (((x + 1) * 5) / 100f);
+                    var conversionResult2 = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-i C:/Temp/temp.mp3 -filter:a \"atempo = {speed}\" -vn C:/Temp/temp{100+((x+1)*5)}.mp3").Start();
+                    conlist.Add("file \'temp" + (100+(x+1)*5) + ".mp3\'");
+
+                }
+
+                using (StreamWriter writer = File.CreateText($"C:/Temp/conlist.txt"))
+                {
+                    foreach (string line in conlist)
+                    {
+                        writer.WriteLine(line);
+                    }
+                }
+
+                var conversionResult3 = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-f concat -i C:/Temp/conlist.txt -c copy {output}").Start();
+            }
+            
+            else
+            {
+                var conversionResult2 = await FFmpeg.Conversions.New().SetOverwriteOutput(true).AddParameter($"-stream_loop {iterations} -i C:/Temp/temp.mp3 -c copy {output}").Start();
+            }
         }
 
     }
