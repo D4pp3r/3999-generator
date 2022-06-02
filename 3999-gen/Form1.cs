@@ -32,6 +32,11 @@ namespace _3999_gen
         {
             InitializeComponent();
             FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official);
+
+            if(!Directory.Exists("c:/temp"))
+            {
+                Directory.CreateDirectory("c:/temp");
+            }
         }
 
         public static string StripHTML(string input)
@@ -255,18 +260,52 @@ namespace _3999_gen
             if(kamikaze) { gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_KAMIKAZE_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}", kamikaze); }
             else { gen.Generate(numNotes, tickA, tickB, Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", ""), Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", ""), $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}", kamikaze); }
 
-            if (chart.MetaData["MusicStream"] is null)
-            {
-
-            }
-
-            else
+            try
             {
                 float[] seconds = TimestampToSeconds(chart, tickA, tickB/* + (chart.ticksPerQuarterNote / 4)*/);
                 if (seconds != new float[] { -1, -1 })
                 {
                     if (kamikaze) { await AudioGenerator.Generate("\"" + filePath.Substring(0, filePath.Length - 11) + chart.MetaData["MusicStream"] + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_KAMIKAZE_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations, kamikaze); }
                     else { await AudioGenerator.Generate("\"" + filePath.Substring(0, filePath.Length - 11) + chart.MetaData["MusicStream"] + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations, kamikaze); }
+                }
+            }
+
+            catch(Exception ex)
+            {
+                bool fileFound = false;
+                string[] files = Directory.GetFiles(filePath.Substring(0, filePath.Length - 11));
+
+                foreach(string filename in files)
+                {
+                    if(filename.Contains("song") && (filename.Contains("ogg") || filename.Contains("mp3") || filename.Contains("wav") || filename.Contains("opus")))
+                    {
+                        fileFound = true;
+
+                        float[] seconds = TimestampToSeconds(chart, tickA, tickB/* + (chart.ticksPerQuarterNote / 4)*/);
+                        if (seconds != new float[] { -1, -1 })
+                        {
+                            if (kamikaze) { await AudioGenerator.Generate("\"" + filename + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_KAMIKAZE_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations, kamikaze); }
+                            else { await AudioGenerator.Generate("\"" + filename + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations, kamikaze); }
+                        }
+                    }
+
+                    else if(filename.Contains("guitar") && (filename.Contains("ogg") || filename.Contains("mp3") || filename.Contains("wav") || filename.Contains("opus")))
+                    {
+                        fileFound = true;
+
+                        float[] seconds = TimestampToSeconds(chart, tickA, tickB/* + (chart.ticksPerQuarterNote / 4)*/);
+                        if (seconds != new float[] { -1, -1 })
+                        {
+                            if (kamikaze) { await AudioGenerator.Generate("\"" + filename + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_KAMIKAZE_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations, kamikaze); }
+                            else { await AudioGenerator.Generate("\"" + filename + "\"", "\"" + $"{chart.pathName}\\..\\..\\{numNotes}_{chart.chartName}_{Regex.Replace(cmboBoxSection.Text, "[0-9]+:[ ]", "")}-{Regex.Replace(cmboBoxSection2.Text, "[0-9]+:[ ]", "")}" + "\\song.mp3" + "\"", seconds[0], seconds[1], gen.iterations, kamikaze); }
+                        }
+                    }
+                }
+
+                if(!fileFound)
+                {
+                    MessageBox.Show("No audio file found! Are you sure the file is named properly? Exiting...");
+                    Application.Exit();
                 }
             }
 
@@ -585,7 +624,7 @@ namespace _3999_gen
                     else if (hasSongArtist) chartArtist = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasSongCharter) charter = newEntry.Trim().Split('=')[1].Trim();
                     else if (hasFrets) frets = newEntry.Trim().Split('=')[1].Trim();
-                    else if (hasDelay) delay = int.Parse(newEntry.Trim().Split('=')[1].Trim())/1000;
+                    else if (hasDelay) delay = int.Parse(newEntry.Trim().Split('=')[1].Trim())/1000.0f;
                     iniData.Add(entry);
                 }
 
